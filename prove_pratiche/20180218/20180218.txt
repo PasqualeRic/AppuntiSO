@@ -1,0 +1,21 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Fare un programma di confronto parallelo di file.
+pcmp file1 file2
+non stampa nulla se i due file sono uguali altrimenti stampa "file1 file2 differ". pcmp deve creare due processi figli;
+mentre un processo controlia la prima meta’ del file, l'altro deve controllare l’altra meta’.
+Se un dei due processi figli trova una differenza, termina immediatamente segnalandolo al padre con opportuno
+valore di ritorno. In questo caso il padre deve terminare l'altro processo.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+usando “getopt” consentire di scegliere il grado di parallelismo voluto:
+ pcmp -j 8 file1 file2
+deve creare 8 processi, ogni processo controlla 1/8 del file.
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Le directory di tipo /proc/nnn/fd (dove nnn e' un numero) mostrano i descrittori di file aperti dai processi.
+Scrivere uno script bash o un programma python che mostri quali processi stanno usando piu' descrittori,
+(ad alcune directory /proc/nnn e' vietato l'accesso perche' sono di altri utenti, saltatele nella scansione).

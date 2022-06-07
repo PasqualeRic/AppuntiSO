@@ -1,0 +1,192 @@
+Esercizio c.1: 
+
+L'incrocio fra una strada e un canale è regolato da un ponte mobile. 
+Ovviamente le auto possono attraversare il ponte solo se è abbassato e si può alzare il ponte se non ci sono auto che lo stanno attraversando. 
+Il ponte deve essere alzato per far passare le imbarcazioni.
+Il canale in corrispondenza del ponte ha una larghezza che consente il passaggio contemporaneo di due imbarcazioni, 
+una per ogni senso di percorrenza, il ponte ha la portata massima di MAXCAR autoveicoli.
+
+Le auto per attraversare il ponte usano il seguente protocollo:
+ bridge.car_enter(direction)
+ ... attraversa il ponte
+ bridge.car_exit(direction)
+
+Le imbarcazioni usano il protocollo:
+ bridge.boat_enter(direction)
+ ... passa sotto al ponte
+ bridge.boat_exit(direction)
+
+dove direction vale 0 o 1 per riconoscere le due diverse direzioni delle auto o delle imbarcazioni. 
+Occorre scrivere la soluzione in modo da evitare casi di starvation.
+
+Svolgimento: 
+
+Nota: si presuppone che se il numero masimo di macchine è MAXCARS, sono MAXCARS/2 per direzione
+
+monitor bridge{
+    
+    bool bridgeIsUp = false;
+    wc = wb = 0;                                   //waiting cars and waiting boats
+
+    bool directionInUse = new bool array[2] = {false,false}
+    int numCars = new int array[2] = {0,0};
+
+    bridgeconds = new condition array[2];
+    boatconds = new condition array[2];
+
+    entry void car_enter(direction){
+        if(bridgeIsUp || numCars[direction] == MAXCARS/2 || wb > 0) {
+            wc++;
+            bridgeconds[direction].wait()
+            wc--;
+        };
+        numCars[direction]++;
+    }
+
+    entry void car_exit(direction){
+        numCars[direction]--;
+        if (wb > 0){
+            if(numCars[0] == 0 && numCars[1] == 0){
+                bridgeIsUp = true;
+                boatconds[0].signal();
+                boatconds[1].signal();
+            }
+        }else bridgeconds[direction].signal();
+    }
+
+    entry void boat_enter(direction){
+        if(!bridgeIsUp || wc > 0 || directionInUse[direction]) {
+            wb++;
+            boatconds[direction].wait();
+            wb--;
+        };
+        directionInUse[direction] = true;
+    }
+
+    entry void boat_exit(direction){
+        directionInUse[direction] = false;
+        if (wc > 0){
+            if(directionInUse[0] == false && directionInUse[1] == false){
+                bridgeIsUp = false;
+                bridgeconds[0].signal();
+                bridgeconds[1].signal();
+            }
+        }else boatconds[direction].signal();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+Sia dato un meccanismo di message passing asincrono. 
+Un numero imprecisato di processi client possono spedire messaggi (stringhe testuali) a N processi server (server0, …, servern-1). 
+Quando un processo client vuole stampare un messaggio sceglie a caso uno dei server e lo spedisce ad esso. 
+Scopo dell'esercizio è di scrivere il codice dei processi server che garantiscano
+che ogni processo stampi i messaggi da esso ricevuti ma se un client spedisce lo stesso messaggio (allo stesso server o a due server
+diversi) il messaggio deve risultare stampato una sola volta da uno solo dei server che l'hanno ricevuto.
+L’esercizio deve essere svolto senza aggiungere ulteriori processi.
+
+ 
+ process[x]: x=0,...,n-1
+    linkedlist received; 
+    while(1):
+        (sender, msg, TAG) = arecv(*);
+        if(TAG != undefined) received.insert(msg);
+        if ( TAG != undefined && !received.contain(msg)){
+            print(msg);
+            for (int i=0; i<N; i++)
+                asend(process[i], (sender:getPid(), msg:msg, 0))
+        }
+
+    Ogni processo server dovrebbe avere la stessa copia di received
+    C'è il caso in cui due processi client inviino lo stesso messaggio a due processi server contemporaneamente
+
+    Soluzione più pesante per il traffico di messaggi:
+
+    process[x]: x=0,...,n-1
+    linkedlist received; 
+    while(1):
+        (sender, msg, TAG) = arecv(*);
+        if(TAG != undefined) {
+            if(tag == 0) received.insert(msg);
+            else asend(sender, (getpid(), received.contain(msg), 1 ))
+        }
+        if ( TAG != undefined && !received.contain(msg)){
+            bool controlFailed = false
+            received.insert(msg);
+            for (int i = 0; i<N && !controlFailed; i++){
+                asend(process[i], msg, 1)
+                controlFailed = (boolean) arecv(process[i]).msg;
+            }
+            if(!controlFailed)
+                print(msg);
+                for (int i=0; i<N; i++)
+                    if(i!= getPid())
+                        asend(process[i], (sender:getPid(), msg:msg, 0))
+        }
+    
+    Funziona in questo modo:
+    -un messaggio viene ricevuto
+        - se il TAG è presente vuol dire che è un messaggio da un altro processo server per indicare un messaggio da "bannare"
+        - altrimenti si effettua un ulteriore controllo utile nel caso in cui il messaggio di avvertimento non sia ancora arrivato
+            - innanzitutto inserisco il messaggio tra quelli bannati del processo corrente 
+            (per evitare che mentre io chiedo agli altri se lo conoscono, qualcuno lo chieda a me senza avere una risposta esatta)
+            - se un altro processo server mi dice che quel messaggio è bannato allora termino il ciclo
+            - altrimenti stampo il messaggio e avverto tutti gli altri di bannarlo.
+    
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1:
+
+Considerare i seguenti processi gestiti mediante uno scheduler round robin con timeslice di 4ms su una macchina SMP:
+
+            Valuta A: COH=x                     Valuta B: COH=y
+
+p1:         credito=6 assegnati=4               credito=8 assegnati=5
+p2:         credito=6 assegnati=3               credito=3 assegnati=3
+p3:         credito=6 assegnati=2               credito=8 assegnati=4
+
+Denotare l'insieme di tutti I valori (x, y) per i quali lo stato sopra indicato risulta safe.
+
+Svolgimento: 
+andiamo per casi sull'ordine delle richieste effettuate determinando in quali di questi casi lo stato è safe:
+
+1,2,3:  (6,8) -> (9,8) -> (11,15)
+1,3,2:  (6,8) -> (8,12) -> (13,16)
+2,1,3:  (6,3) -> (9,8) -> (12,12)
+2,3,1:  (6,3) -> (8,8) -> (13,13)
+3,1,2:  (6,8) -> (10,13) -> (13,16)
+3,2,1:  (6,8) -> (9,11) -> (13,16)
+
+a seconda dell'ordine delle richieste, questi sono i valori di x e y per cui si può mantenere uno stato safe
+ 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) Quando viene richiamato l'algoritmo del Banchiere e cosa succede se lo stato risultante viene valutato unsafe (non safe)?
+
+    L'algoritmo del banchiere viene richiamato nel momento in cui un processo fa richiesta di parte di una risorsa per verificare
+    che soddisfare la richiesta non possa portare ad uno stato unsafe (che potrebbe trasformarsi in deadlock)
+    Se dopo questa operazione lo stato viene valutato unsafe, il processo viene messo in attesa e la risorsa non viene assegnata.
+
+b) Quali contromisure sono necessarie quando la somma dei working set dei processi attivi supera il numero di frame della memoria
+presenti in un sistema che adotta allocazione globale della memoria primaria?
+
+    Quando ci troviamo in una situazione del genere c'è un alto rischio di ritrovarsi in uno stato di trashing ed è necessara 
+    la sospenione di uno o più processi, per garantire a quelli rimanenti di andare avanti con le operazioni
+
+c) RAID 1 e RAID 5 tollerano entrambi il guasto di un solo disco. Quando è indicato usare RAID 1 e quando RAID 5?
+
+    Il sistema Raid 1 richiede almeno 2 dischi ed effettua un mirrorin della scrittura dei dati. 
+    Il sistema RAID 5 richiede almeno 3 hard disk ed anche in questo caso è possibile recuperare i dati in
+    caso di guasto di un dispositivo. Rispetto al RAID1, il RAID 5 offre maggiori performance in fase di scrittura e capacità.
+    C'è però da dire che con Raid 5 la rottura di due dischi porta alla perdita di tutti i dati
+
+d) Il tempo rimanente calcolato dall'algoritmo SRTF può diventare negativo? (sì o no, perché?)
+
+    SRTF non è stato trattato nel dettaglio,
+    sappiamo solo che è una versione preemptive di shortest job first che sostituisce il processo corrente con l'ultimo arrivato
+    se questo ha tempo di completamento minore di quello rimanente al processo corrente.

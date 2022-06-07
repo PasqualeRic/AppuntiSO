@@ -1,0 +1,199 @@
+Esercizio c.1:
+
+Un semaforo intelligente controlla un incrocio al quale si può accedere da 4 direzioni N, E, S, W. Un solo veicolo alla
+volta deve occupare l’area dell’incrocio. Se sono presenti veicoli da tutte le direzioni, il semaforo fa avanzare ciclicamente un veicolo
+da ogni direzione (NESWNESWNESW…). Se nessun veicolo è in attesa da una direzione, il turno viene saltato.
+Quella che segue è la porzione di di programma eseguita dai veicoli per passare attraverso l’incrocio:
+    
+    crossing.enter(direction)
+    …critical section
+    crossing.exit(direction)
+
+Nonostante sia un semaforo, questo esercizio deve venir risolto coi monitor.
+
+Svolgimento:
+
+Nota: sia in enter che in exit direction è la direzione di arrivo, non di destinazione, altrimenti sarebbe un 
+informazione poco utile per come è costruito l'esercizio.
+In particolare: 0:N , 1:E, 2:S, 3:W
+
+monitor crossing{
+
+    ok2pass = new condition array[4];
+    bool occupied = false; 
+    waitingCars = new int array[4];
+
+    entry void enter(direction){
+        if(occupied) {
+            waitingCars[direction]++;
+            ok2pass[direction].wait();
+            waitingCars[direction]--;
+        }
+        occupied = true;
+    }
+
+    entry void exit(direction){
+        occupied = false;
+        bool continue = true;
+        for (int i=1; i<=4 && continue; i++){
+            if(waitingCars[(direction+i)%4] > 0){
+                continue = false;
+                ok2pass[(direction+i)%4].signal();
+            }
+        }
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Sia dato un meccanismo di message passing asincrono. Un numero imprecisato di processi client possono spedire
+messaggi (stringhe testuali) a N processi server (server0, …, servern-1). Quando un processo client vuole spedire un messaggio
+sceglie a caso uno dei server e lo spedisce ad esso. Scopo dell'esercizio è di scrivere il codice dei processi server che garantiscano
+che:
+- tutti i processi server stampino tutti i messaggi ricevuti (indipendentemente dal server che l'ha ricevuto)
+- tutti i processi server stampino la stessa sequenza di messaggi.
+** L’esercizio deve essere svolto senza aggiungere ulteriori processi.
+
+Svolgimento:
+
+    Nota: stessa sequenza, non sequenza data obbligatoriamente dal tempo.
+
+ process[x] x=0....N-1
+    queue myQueue of <msg,id>;
+    queue otherProcessesQueue of <msg,id>;
+    bool token = (x==0);
+    bool first = true;
+    while true:
+        (sender, msg, TAG) = arecv(*);
+        if(TAG != undefined){
+            if(TAG == 1){  
+                if(!token)
+                    asend((x+1)%N, [], 1);
+            }else{  
+                token = true;
+                otherProcessesQueue = msg;
+                while(!otherProcessesQueue.isEmpty && otherProcessesQueue.head().id != x && !first ){
+                    otherProcessesQueue.dequeue()
+                while(!otherProcessesQueue.isEmpty && otherProcessesQueue.head().id == x)
+                    otherProcessesQueue.dequeue()
+            }
+        }else{                         
+            myQueue.enqueue({msg,x})
+            asend((x+1)%N, [], 1);
+        }
+        if(token){
+            if(first==true){
+                first=false;
+            }
+            if(myQueue.isEmpty()) myQueue.enqueue({"",x});
+
+            while(!myQueue.isEmpty){
+                otherProcessesQueue.enqueue(myQueue.dequeue());
+            }
+            asend((x+1)%N, otherProcessesQueue, 0);
+            
+            while(!otherProcessesQueue.isEmpty){
+                if(otherProcessesQueue.head.msg != "")
+                    print(otherProcessesQueue.dequeue());
+                else otherProcessesQueue.dequeue();
+            }
+        }
+
+        Molto contorto, ma pare funzionare.
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1:
+
+Sia data una sequenza di accessi in memoria effettuati da tre processi a,b,c. Si consideri un sistema che applichi il
+meccanismo del Working set in modo globale e non processo per processo. Il Working set ha durata equivalente a 15 riferimenti in
+memoria e il numero di frame globale del sistema e' pari a 10. Il sistema ha pagine di 256 byte.
+Sia data quindi la seguente sequenza di indirizzi relativa agli in memoria dei processi (a:0x123A significa che il processo accede
+all’indirizzo esadecimale 123A).
+
+    a:0x123A b:0x1211 c:0x1112 a:0x12FB b:0x1A1A c:0x0A0C a:0x0002 b:0x0002
+    c:0x0AAA a:0x2D1A b:0x0B0A c:0x1211 a:0x1200 b:0x1A77 c:0x0A0A a:0x1200
+    c:0x11FF b:0x123A c:0xCAD0 a:0xDAD0 b:0x0000 a:0x12AA b:0x1AA1 b:0x12BB
+    b:0x12BB b:0x0B0A
+
+Calcolare i working set ad ogni istante. Vengono segnalate situazioni di trashing?
+
+Svolgimento
+              X                                          X          X                          X        X                        
+ a:0x123A b:0x1211 c:0x1112 a:0x12FB b:0x1A1A c:0x0A0C a:0x0002 b:0x0002 c:0x0AAA a:0x2D1A b:0x0B0A c:0x1211 a:0x1200 b:0x1A77 
+                X                                                                           X       X       X
+     c:0x0A0A a:0x1200 c:0x11FF b:0x123A c:0xCAD0 a:0xDAD0 b:0x0000 a:0x12AA b:0x1AA1 b:0x12BB b:0x12BB b:0x0B0A
+
+Indichiamo le pagine accedute senza doppioni di offset:
+
+pagine ws1: 
+      12     12     11      12    1A     0A     00      0A    2D     0B     12     1A     0A
+    0x123A 0x1211 0x1112 0x12FB 0x1A1A 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A       7 < 10 -> no thrashing
+
+pagine ws2:
+      12     11     12      1A    0A     00     0A     2D      0B    12     1A     0A
+    0x1211 0x1112 0x12FB 0x1A1A 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A      7 < 10 -> no thrashing
+
+pagine ws3: 
+      12     11      12    1A     0A     00     0A     2D     0B     12     1A     0A      11
+    0x1211 0x1112 0x12FB 0x1A1A 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF      7 < 10 -> no thrashing
+
+pagine ws4: 
+    0x1211 0x12FB 0x1A1A 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A       7 < 10 -> no thrashing
+
+pagine ws5: 
+    0x1211 0x1A1A 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0       8 < 10 -> no thrashing
+
+pagine ws6: 
+    0x1211 0x0A0C 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0       9 < 10 -> no thrashing
+
+pagine ws7: 
+    0x1211 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000        9 < 10 -> no thrashing
+
+pagine ws8: 
+    0x1211 0x0002 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000 0x12AA      9 < 10 -> no thrashing
+
+pagine ws9: 
+    0x1211 0x0AAA 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000 0x12AA 0x1AA1      9 < 10 -> no thrashing
+
+pagine ws10: 
+    0x1211 0x0002 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000 0x12AA 0x12BB       8 < 10 -> no thrashing
+
+pagine ws11: 
+    0x1211 0x0002 0x2D1A 0x0B0A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000 0x12AA 0x12BB       9 < 10 -> no thrashing
+
+pagine ws11: 
+    0x1211 0x0002 0x2D1A 0x1200 0x1A77 0x0A0A 0x11FF 0x123A 0xCAD0 0xDAD0 0x0000 0x12AA 0x12BB 0x0B0A      9 < 10 -> no thrashing
+
+Non superiamo mai il numero di frame -> no trashing
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+Rispondere alle domande seguenti:
+
+a) Per I file system di tipo fat non è efficiente l'accesso diretto (ad esempio con la system call lseek) a file di grandi dimensioni.
+Perché?
+
+    Innanzitutto un filesistem FAT non permette la presenza di file che superano i 4GB di dimensione, quindi risulta di per se scomodo 
+    allocarveli.
+    Inoltre per ogni volta che è necessrio il passaggio da un blocco dati ad un altro è necessario scandire nuovamente la FAT, e questo con
+    file di grandi dimensioni vuol dire molte scansioni e molti accessi in memoria (a meno di caching dei blocchi fat). 
+
+b) È necessario il supporto DMA per implementare un device driver di tipo interrupt driven? Perché?
+
+    Le due cose sono sconnesse, un DMA permette di accedere alla memoria senza scomodare la CPU, mentre gli interrupt solitamente bloccano
+    il filo esecutivo della cpu. Perciò i vantaggi de DMA si andrebbero a perdere e creeremmo soltanto più traffico nei bus.
+
+c) A cosa serve gestire batterie di dischi con metodologia RAID? E’ necessario fare backup dei dati memorizzati in RAID?
+
+    Già risposto
+
+d) Quali sono i benefici del linking dinamico?
+
+    I vantaggi del linking dinamico sono: codice più compatto,  risparmio di memoria, aggiornamento automatico delle versioni delle 
+    librerie alla successiva attivazione dei programmi. (anche se questo vantaggio non copre il problema del versioning in caso di
+    versioni compatibili ma diverse)

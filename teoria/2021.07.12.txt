@@ -1,0 +1,179 @@
+1)
+
+    monitor torneo{
+
+        struct node{
+            int squad;
+            int form;
+            bool ready;
+        }
+
+        binarytree tournament = new nodes binarytree(N)
+        condition wait4opponent = condition array(2^N);
+
+        entry void init(){
+            initTree(0,2^N-1,tournament);
+        }
+
+        void initTree(min,max, node){           //attraverso questa struttura mi basta consultare il nodo fratello per trovare l'avversario.
+            if(node->sx != NULL){
+                node->squad=-1;
+                node->form=0;
+                node->ready = false;
+                initTree(min,min+((max-min)-1)/2, node->sx);
+                initTree(min+((max-min)+1)/2,max, node->dx);
+            }else{
+                node->squad=min;
+                node->form=0;
+                node->ready = false; 
+            }
+        }
+
+        entry bool gioca(squadra,turno,forma){
+            node = getHigherNodeWithMyId(i);
+            node.form = forma;
+            node.ready = true;
+            if(node->sib.ready == false) wait4opponent[squadra].wait();
+            else{
+                if(forma > node->sib.form){                                 //uno dei due processi (quello che arriva per secondo) esce qui
+                    node->parent.squad = node.squad;
+                    wait4opponent[node->sib.squad].signal();
+                    return true;
+                }else{
+                    node->parent.squad = node->sib.squad;
+                    wait4opponent[node->sib.squad].signal();
+                    return false;
+                }
+            }                                                                //l'altro qui
+            if(node->parent.squad == squadra) return true;
+            else return false;
+        }
+    }
+
+//la variabile turno non è stata utile per questa implementazione.
+//ovviamente binaryTree definisce un albero binario completo; (il parametro passato è l'altezza)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class wrongsem
+        int value=0, count=0;
+        semaphore mutex(i);
+        semaphore s(0);
+
+        void wV(){
+            mutex.P();
+            if(value==0 && count>0) s.V();
+            else value++;
+            mutex.V();
+        }
+
+        void wP(){
+            mutex.P();
+            if(value==0) {
+                count++;
+                mutex.V();
+                s.P();
+                mutex.P();
+                count--;
+            } else value--;
+            mutex.V();
+        }
+    
+    Si verifica un errore quando: 
+    -P1 esegue una P e si blocca 
+    -P2 esegue una V e sblocca P1
+    -P1 si blocca su mutex
+    -P2 rilascia la mutex
+    -P3 (molto veloce) prende la mutex e fa S.V() perchè risulta ancora un processo bloccato
+
+    -in questo modo una V è andata persa.
+
+    Correzione:
+
+    class wrongsem
+        int value=0, count=0;
+        semaphore mutex(i);
+        semaphore s(0);
+
+        void wV(){
+            mutex.P();
+            value++;
+            if(value==0 && count>0) s.V();
+            else mutex.V();
+        }
+
+        void wP(){
+            mutex.P();
+            if(value==0) {
+                count++;
+                mutex.V();
+                s.P();
+                count--;
+            } else value--;
+            mutex.V();
+        }
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+algoritmo modulo: 
+-memoria di NF frame,
+-se avviene un page fault in corrispondenza dell'iesimo elemento della stringa di riferimenti, modulo sceglie come vittima la pagina 
+che occupa i % NF
+
+a)
+    con NF = 3
+    stringa: 1  2   3   4   5   3   3   3   1   5
+
+     modulo: 1  1   1   4   4   4   4   4   1   1
+                2   2   2   5   5   5   5   5   5 
+                    3   3   3   3   3   3   3   3 
+
+    con NF = 4
+    stringa: 1  2   3   4   5   3   3   3   1   5
+
+     modulo: 1  1   1   1   5   5   5   5   1   5
+                2   2   2   2   2   2   2   2   2 
+                    3   3   3   3   3   3   3   3 
+                        4   4   4   4   4   4   4
+b)
+modulo è un algoritmo a stack?
+per dimostrare che modulo non è a stack basta vedere la arte a dell'esercizio. In corrispondenza dell'ultima pagina nella stringa 
+di riferimenti possiamo notare che l'insieme di pagine presenti in memoria con NF = 3 non è sottoinsieme di quello con NF = 4
+-> l'algoritmo non è a stack per definizione.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Rispondi alle domande:
+
+a) perchè il nome del file non è memorizzato all'interno dell'inode?
+
+    -perchè i file sono già distinti attraverso l'inode Number
+    -perchè un file può avere più nomi
+    -perchè un eventuale cambio della dimensione allocabile da un nome (in futuro) porterebbe a modificare tutto il file system
+
+b) un bug di tipo buffer overflow consente a un attaccante di spedire più dati di quelli che il buffer di ricezione può contenere,
+   arrivando nelle aree di memoria di altre variabili. come è stato possibile in tanti casi che l'attaccante mandasse codice macchina
+   e che il programma vittima dell'attacco lo eseguisse?
+
+   è stato possibile perchè conoscendo l'architettura e il sistema operativo della vittima è possibile sapere come i dati vengono 
+   immagazzinati e soprattutto alcune informazioni fondamentali sulla conformazione dello stack.
+   Attraverso queste informazioni è possibile trovare dei modi attraverso la tecnica del buffer overflow
+   per manomettere l'indirizzo di ritorno di una funzione per farlo puntare al codice macchina inserito malevolmente.
+
+
+c) come fa l'allocazione gerarchica ad evitare casi di deadlock?
+    
+    -alle classi di risorse vengono associati valori di priorità
+    -ogni processo in ogni istante può allocare solamente risorse di priorità superiore a quelle che già possiede
+    -se un processo vuole allocare una risorsa a priorità inferiore, deve prima rilasciare tutte le risorse con priorità uguale 
+    o superiore a quella desiderata
+
+    (risorse con priorità maggiore, in media verranno rilasciate più spesso/facilmente)
+
+    nota: funziona ma è molto inefficiente.
+
+d) per rendere uno scheduler RR più proto a servire processi interattivi si decide di dimezzare la durata del timeslice.
+   quali effetti collaterali può avere la scelta?
+
+   con un timeslice troppo piccolo il sistema diventa meno efficiente in quanto potenzialmente raddoppia il numero di volte che bisogna 
+   caricare uno stato nella CPU. 

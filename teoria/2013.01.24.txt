@@ -1,0 +1,70 @@
+Esercizio c.1: 
+
+(a) Scrivere un monitor nmbb che realizzi un buffer limitato (di ampiezza BUFSIZE) che consenta alle
+chiamate write (inserimento nel buffer) e read (lettura da buffer) di operare su vettori di piu' elementi. In particolare
+l'interfaccia delle procedure entry da implementare e' la seguente:
+ 
+     procedure entry write(int n, struct elem *v);
+     procedure entry read(int m, struct elem *w);
+
+se n o m sono maggiori di BUFSIZE le funzioni non devono fare nulla (caso di errore).
+La funzione write deve attendere che ci sia spazio nel buffer per inserire n elementi (il vettore v conterra' n elementi).
+Solo quando e' possibile completare l'operazione vengono inseriti tutti gli elementi di v nel buffer
+La funzione read attende che vi siano almeno m elementi nel buffer quindi estrae dal buffer (in ordine FIFO) m
+elementi e li copia nel vettore w.
+
+(b) sono possibili casi di deadlock? (motivare dettagliatamente la risposta)
+
+Svolgimento:
+
+monitor nmbb{
+    
+    int  BUFFSIZE;
+    queue buf = new elem *queue;
+    queue nextWriters = new  int queue;
+    queue nextReaders = new  int queue;
+    condition ok2write, ok2read;
+
+    procedure entry init(int buffsize){
+        BUFSIZE = buffsize;
+    }
+
+    procedure entry void write(int n, struct elem *v){
+        if(n<BUFFSIZE){
+            if (buf.length + n >BUFFSIZE || nextWriters.length > 0){
+                nextWriters.enqueue(n);
+                ok2write.wait();
+                nextWriters.dequeue();
+            }
+            for(int i; i<n; i++) buf.enqueue(elem[i]);
+            if(nextReaders.head() >= buf.length) ok2read.signal();
+            else if(nextWriters.head() + buf.length <= BUFFSIZE) ok2write.signal();
+        }
+    }
+
+    procedure entry void read(int m, struct elem *w){
+        if(n<BUFFSIZE && m > 0){
+            if (buf.length > m || nextWriters.length > 0){
+                nextReaders.enqueue(m);
+                ok2read.wait();
+                nextReaders.dequeue();
+            }
+            for(int i; i<m; i++) w[i]=buf.dequeue();
+            if(nextWriters.head() + buf.length <= BUFFSIZE) ok2write.signal();
+            else if(nextReaders.head() >= buf.length) ok2read.signal();
+        }
+    }
+}
+
+b) Un caso di deadlock effettivamente è possibile:
+    Buffsize = 6
+    P1 scrive 5 elementi
+    P2 vuole scrivere 2 elementi ma non può perche supererebbe buffsize e si mette in coda
+    tutti i writers che seguiranno P2 andranno in attesa per rispettare la fifoness
+    Se arriva un processo Pn che vuole leggere 6 dal buffer non può perche non è disponibile e 
+    lui si bloccherà assieme a tutti gli altri lettori
+    La situazione è di deadlock.
+
+    Si potrebbe risolvere permettendo al processo che in questo caso è P2 di finire a riempire il buffer prima
+    di mettersi in attesa con i restanti elementi.
+

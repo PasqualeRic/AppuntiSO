@@ -1,0 +1,158 @@
+Esercizio c.1: 
+
+In una conferenza il coordinatore decide l’ordine degli oratori e li chiama uno ad uno per poter fare il proprio intervento.
+Se l’oratore arriva in ritardo (non sta attendendo al momento della chiamata) perde il diritto di poter parlare.
+
+ Coordinatore: process
+    while True:
+    chiamato = next(); //next è la funzione che restituisce il nome del prossimo oratore
+    print(“Chiamo ora a parlare “,chiamato);
+    if (conf.chiama(chiamato))
+        print(“ringrazio “, chiamato,” per la relazione”);
+    else
+        print(“mi dispiace che “, chiamato, “non sia presente”);
+
+ Oratore[nome]: for nome in set_of_speakers
+    if conf.arrivato(nome):
+        //presentazione
+        conf.finepresentazione(nome)
+
+
+Scrivere il monitor conf. La funzione chiama aspetta che il relatore chiamato abbia completato l’intervento, se prensente, e restituisce
+vero altrimenti restituisce falso. La funzione arrivato segnala la presenza e pone il relatore in attesa del proprio turno. Se il relatore è
+già stato chiamato ed era assente restituisce falso.
+
+Svolgimento:
+
+La funzione .contain(nome) restituisce true se un elemento della lista ha parametro name = nome, falso altrimenti.
+La funzione .remove(nome) restituisce l'elemento che ha parametro name = nome, null altrimenti.
+.insert è una semplice funzione che inserisce l'elemento con i parametri passati nella lista.
+
+Le medesime funzioni sono state implementate anche per linked list di onlyName (con la differenza che c'è un parametro in meno)
+
+monitor conf{
+
+    struct conds{
+        string name;
+        condition c;
+        conds *next;
+    }
+    struct onlyName{
+        string name;;
+        onlyName *next;
+    }
+
+    segnaArrivati = new conds linkedlist;
+    chiamati = new onlyName linkedlist;
+    condition isTalking;
+    
+    entry bool chiama(chiamato){
+        if(segnaArrivati.contain(chiamato)){
+            (name, c) = segnaArrivati.remove(chiamato);
+            c.signal();
+            isTalking.wait();
+        }else{ 
+            chiamati.insert(chiamato);
+            return false;
+        }
+    }
+
+    entry bool arrivato(nome){
+        if(chiamati.remove(chiamato)!=NULL)
+            condition c = new condition()
+            segnaArrivati.insert((name:nome, c:c))
+            c.wait();
+            return true;
+        } else return false;
+    }
+    
+    entry void finepresentazione(nome){
+        isTalking.signal();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Sia dato un servizio di message passing a diffusione che fornisce due funzioni:
+
+    void bsend(msg_type msg)
+    
+    msg_type brecv(void)
+
+I messaggi spediti con la bsend vengono ricevuti da tutti i processi e la brecv riceve i messaggi spediti da ogni mittente.
+I messaggi di ogni mittente vengono ricevuti il ordine FIFO.
+E’ possibile con il servizio a diffusione implementare un servizio di message passing asincrono? Se sì fornire l’implementazione, se no
+(di)mostrare l’impossibilità.
+
+Svolgimento:
+
+    asend(dest,msg){
+        bsend((getPid(),msg))
+    }
+
+    arecv(sender){
+        pid_t send;
+        string msg;
+        do{
+            (send,msg) = brecv()
+        }while(sender != send)              //così facendo però i messaggi in arrivo da altri mittenti vengono perduti (a meno di list globale di messaggi)
+        return msg;
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia data la seguente funzione:
+
+ void shift_first(char *a) {
+    int i;
+    for (i=0; i<95; i++)
+        a[i * 1024] = a[(i+5) * 1024];
+    }
+
+In un sistema con pagine da 1K ci sono tre processi che stanno contemporamente eseguendo la funzione shift_first. I tre processi
+non condividono dati. Nell’ipotesi che sia il codice sia lo stack siano in segmenti non gestiti dalla memoria virtuale calcolare il working
+set complessivo con ampiezza di finestra 10, 20 e 30. Se ci sono 45 frame di memoria siamo in presenza di trashing o no?
+
+Svolgimento:
+
+a:0 a:5 b:0 b:5 c:0 c:5 a:1 a:6 b:1 b:6 c:1 c:6 a:2 a:7 ..................... c:94 c:99
+
+processo a: 0,5,1,6,2,7,3,8,4,9,5,10,6,11,7,12,8,13,9,14,10,15,11,16,12,17,13,18,14,19,15, 20
+
+Per quanto riguarda il singolo processo, una ripetizione avviene ogni 2*5 = 10 accessi
+quindi con dimensione della finestra 10: 9 accessi diversi, con dimensione 20: 15 accessi diversi, con dimensione 30: 20 accessi diversi
+Con dimensione 2 i 15 accessi moltiplicati per i 3 processi diventerebbero 45, ovvero il limite massimo prima di avere trashing
+Capiamo quindi che per avere trashing serve una finestra di ws con dimensione > 20.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+
+Rispondere alle domande seguenti:
+
+a) la ricostruzione della coerenza mediante tecnica di journaling risolve solo alcuni tipi di incoerenze, quali non vengono gestite?
+
+    I file system con journaling perdono informazioni nel caso in cui una transazione fallisce durante la sua esecuzione. Infatti in questo 
+    caso il log non viene scritto e le modifiche vanno perdute.
+
+b) applicando la paginazione con la segmentazione aumenta la frammentazione interna (rispetto alla paginazione senza
+segmentazione). Questa affermazione è vera o falsa, perché?
+
+    In realtà è vera, perchè i segmenti verrebbero divisi in pagine, ed essendo dimensionati dal programmatore è molto
+    difficile che questi siano perfettameente divisibili da un numero di pagine (che hanno invece dimensione fissa), portando così 
+    a frammentazione interna. D'altra parte in questo modo si evita la frammentazione esterna.
+
+c) Quale è la differenza fra gli algoritmi di scheduling “Shortest Time First” e “Shortest Remaining Time First”?
+
+    In sintesi mentre Shortest Time First esegue una valutazione dei processi attivi e attraverso appositi calcoli determina qual è la
+    combinazione che richiede meno tempo. SRTF è la versione preemptive di STF in cui durante l'esecuzione del cpu burst di un processo,
+    se arriva un altro processo con burst di tempo inferiore a quello rimanente per il processo corrente, ne prende il posto.
+
+d) Perché il meccanismo del “sale” (salt) rende più complesso l’attacco di tipo dizionario alle password?
+
+    Perchè una volta che le password sono state salate, tutti i salt vengono memorizzati in chiaro nel file password e
+    in questo modo, il dizionario deve essere codificato con tutti i possibili salt, richiedendo un tempo maggiore.

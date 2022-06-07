@@ -1,0 +1,141 @@
+Esercizio c.1: 
+
+Per lo scopo di questo esercizio si ipotizzi la presenza di infiniti processi che si vogliono sincronizzare a
+tre a tre sulla base di un contrassegno numerico (tag).
+Ogni processo chiama la procedura di ingresso syn3 del monitor three (three.syn3) passando come parametro (in
+input) un contrassegno numerico floating point (double) e un array di tre indentificativi di processo (in output).
+Monitor three:
+Procedure entry void syn3(double tag, pid_t proc[3])
+….
+Solo quando tre processi hanno chiamato la syn3 specificando lo stesso valore per tag posso proseguire nella
+computazione. Il vettore proc conterra' gli identificativi dei tre processi (ogni processo quindi conoscera'
+l'identificativo degli altri due che hanno consentito di proseguire).
+Se per esempio il processo P1 richiama syn3 con il valore 3.14, poi P2 con 1.41, P3 con 2.71, P4 con 3.14, se a questo
+punto arriva un processso P5 che chiama syn3 con valore 3.14 sblocca P1, P4 e P5 (P2 e P3 rimarranno in attesa che
+altri processi richiamino syn3 con 1.41 o con 2.71). P1, P4 e P5 riceveranno nel vettore proc gli identificativi di P1, P2
+e P4.
+
+Svolgimento:
+
+monitor three{
+
+    struct element{
+        condition c;
+        int value;
+        pid_t arr[3];
+        int num;
+    }
+
+    element q = new element queue();
+
+    procedure entry void syn3(double tag, pid_t proc[3]){
+        element e = q.getElementWithValue(tag)                  //null otherwise
+        if(e == NULL){
+            condition cond = new condition;
+            e = new element()
+            e.value = tag;
+            e.num = 0;
+            e.arr[0] = getPid();
+            q.enqueue(e);
+            e.c.wait();
+        }else{
+            e.num ++;
+            if(e.num < 3){
+                e.arr[e.num] = getPid();
+                e.c.wait();
+            }
+        }
+        e.num--;
+        if(e.num == 0) q.removeElementWithValue(tag);
+        e.signal();
+        return e.arr;
+    } 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2: Sia dato un servizio di message passing asincrono.
+Scrivere un servizio di message passing asincrono a messaggi doppi (implementare quindi le chiamate dsend drecv):
+la drecv deve consegnare un messaggio solo quando due messaggi con lo stesso contenuto vengono ricevuti da due
+mittenti distinti.
+
+Svolgimento:
+
+function dsend(dest, msg){
+    asend(dest, (getpid(), msg))
+}
+
+struct elem{
+    msg_t msg;
+    pid_t pid;
+}
+
+function drecv(){
+    q = new elem queue()
+    
+    msg_t m = NULL;
+    while(m == NULL){
+        (sender,msg) = arecv();
+        while(msg != TAG){
+            e = new elem();
+            e.msg = msg;
+            e.pid = sender;
+            q.enqueue(e)
+            (sender,msg) = arecv();
+        }
+        asend(getPid, (getPid(), TAG));
+        msg_t m = getFirstDoubleMessage(q);
+    }
+    removeFirstTwoDouble(q);
+    while(!q.isEmpty()){
+        elem e = q.dequeue()
+        asend(getPid(), (e.pid,e.msg) );
+    }
+    return m;
+}
+
+msg_t getFirstDoubleMessage(element queue q){
+    for(int i=0; i<q.length; i++){
+        for(int j=i+1; j<q.length; j++){
+            if(q[i].pid != q[j].pid && q[i].msg == q[j].msg){
+                return q[i].msg;
+            }
+        }
+    }
+    return null;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1: Sia dato un file system di tipo UNIX. Puo' essere soggetto a diversi tipi di incoerenza. Per ogni tipo
+indicare come riconoscere l'incoerenza e le azioni correttive operate da fsck.
+1- errato numero di blocchi del file
+2- errato numero di link di un file (reference count)
+3- errori nella tabella/bitmap dei blocchi occupati/liberi
+4- problemi di connettivita' del file system
+
+Svlogimento:
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.2: Rispondere ad almeno due delle seguenti domande:
+• A cosa serve l'algoritmo di Dekker e come funziona?
+
+    si tratta di un algoritmo che risolve il problema della mutex (mutual exclusion, mutua esclusione), 
+    gestendo i processi:
+    -evita il deadlock
+    -la sezione critica viene eseguito da un processo alla volta
+
+• Access Control List/Capability, a cosa servono? Quali sono le differenze?
+
+    ACL e capability sono meccanismi software attraverso cui il SO “decide” se un soggetto ha il permesso di 
+    eseguire una determinata azione su un oggetto.
+    Le differenze principali sono:
+    -le ACL sono contenute "all'interno dei file", mentre le capability vengono distribuite ai processi stessi.
+    -ACL molto grandi diminuiscono l'efficienza, mentre l'uso di capability risulta più scalabile.
+    -La revoca di un permesso è semplice scon le ACL e complessa con le capability.
+
+• Cosa significa “partizionare” un disco? A cosa serve?
+
+    La partizione di un disco è una divisione logica interna di quest ultimo.
+    Le principali utilità che può avere una partizione sono:
+    -allocare spazio come memoria di swap 
+    -avere file system diversi su un unico disco

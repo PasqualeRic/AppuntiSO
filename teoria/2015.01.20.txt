@@ -1,0 +1,179 @@
+Esercizio c.1:
+
+Scrivere il monitor lwlrbb. Il monitor deve implementare le seguenti procedure entry:
+ 
+    void write(generic_type val);
+    generic_type read(void);
+
+Il lwlrbb si comporta come un bounded buffer di MAX elementi che coordina l'attivita' di numerosi processi produttori/scrittori e
+numerosi lettori/consumatori. lwlrbb ammette un numero massimo (sempre MAX) di lettori e scrittori in attesa.
+Se il buffer e' vuoto e ci sono piu' gia' MAX lettori in attesa, il lettore che e' in attesa da piu' tempo esce resituendo NULL.
+In ugual modo se il buffer e' completamente pieno e ci sono gia' MAX scrittori che attendono di scrivere viene perduto il valore che da
+piu' tempo nel buffer attende di venir letto, il primo processo in attesa di scrivere puo' cosi' scrivere il suo elemento nel buffer e
+sbloccarsi.
+
+Svolgimento:
+
+
+monitor lwlrbb{
+
+    int MAX = ... //massima dimensione buffer e numero di lettori/scrittori
+    buf = new generic_type queue;
+    readers = new condition queue;
+    condition ok2write; 
+    int ww, wr = 0;
+    bool exit = false;
+
+    entry void write(generic_type val){
+        if(buf.length == MAX){
+            if(ww == MAX){
+                buf.dequeue();
+                ok2write.signal();
+            }
+            ww++;
+            ok2write.wait();
+            ww--;
+        }
+        buf.enqueue(value);
+        if(wr > 0){
+            c = readers.dequeue();
+            c.signal();
+        }
+    }
+
+    entry generic_type read(){
+        if(buf.length == 0){
+            if(wr == MAX){
+                condition c = readers.dequeue();
+                exit = true;
+                c.signal();
+                exit = false;
+            }
+            condition c;
+            readers.enqueue(c);
+            wr++;
+            c.wait();
+            wr--;
+            if(exit) return null;
+        }
+        value = buf.dequeue()
+        ok2write.signal();
+        return value;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+a) Si consideri la funzione atomica dualshift(a,b) che opera su due operandi di tipo byte passati per indirizzo. L'operazione fa lo shift a
+destra dei due operandi. Il bit piu' significativo di a viene posto a zero, il bit piu' significativo di b diviene quello che all'atto della
+attivazione di dualshift era il bit meno significativo di a.
+es. se a vale 6 e b vale 4 dopo la chiamata di dualshift(a,b) a vale 3 e b 2. Se a vale 5 e b 6 dopo la chiamata dualshift (a,b) a vale 2
+e b vale 131 (128+3).
+La funzione dualshift puo' essere usata al posto della test&set per la sincronizzazione fra processi? Dimostrare la risposta.
+b) Si consideri ora la funzione andor(a,b) che opera su due opera su due parametri di tipo booleano passati per indirizzo e cosi'
+definita:
+andor(a,b)=<c=a or b; b=a and b; a=c>
+Puo' la funzione andor essere usata al posto della test&set per la sincronizzazione fra processi? Dimostrare la risposta.
+Si ricorda che le operazioni di assegnazione di valori costanti a variabili vengono considerati atomici.
+
+Svolgimento:
+
+a)                          10000001    00000000    ->  01000000    10000000    
+    int 
+    mutex_in(){
+        int 
+        do{
+
+            dualshift(a,b)
+        }while()
+    }
+    
+    mutex_out(){
+        dualshift(a,b);
+    }
+
+    Dopo un determinato numero di cicli diventeranno entrambi 0, quindi la funzine non è adatta alla test and set
+
+b)
+    bool a = false;
+    mutex_in(){
+        bool b;
+        do{
+            b = true
+            andor(a,b)
+        }while(B==1)
+    }
+    
+    mutex_out(){
+        a=false;
+    }
+
+succede questo: il primo rocesso arriva, abbiamo (a=0, b=1)
+eseguo ed escono (a=1,b=0)
+entra il secondo processo con (a=1,b=1) e i valori di a e b non cambiano mai da questa base
+quando p1 mette a=0
+p2 entrerà con (a=0, b=1) e uscirà (anche dal ciclo) con (a=1, b=0)
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1:
+
+a) Sia data la seguente stringa di riferimenti: 123451234123121.
+mostrare il comportamento degli algoritmi MIN e LRU quando operano su una memoria di 3 frame.
+b) Data una memoria di 4 frame contenente la pagina 4 nel frame 1, la pagina 3 nel frame 2, la pagina 2 nel frame 3 e infine la
+pagina 1 nel frame 4. Mostrare una stringa di riferimenti di un programma che usi 5 pagine (esiste la pagina 5 non ancora mappata in
+memoria oltre alle 4 cariate nei frame) e che consenta alla fine dell'esecuzione di avere tutte le pagine nel frame di indice
+corrispondente. La pagina 1 nel frame 1, la pagina 2 nel frame 2 e cosi' via.
+
+Svolgimento:
+
+a)
+     Pagina richiesta:  1   2   3   4   5   1   2   3   4   1   2   3   1   2   1
+        Algoritmo MIN:  1   1   1   1   1   1   1   1   1   1   1   1   1   1   1
+                            2   2   2   2   2   2   2   2   2   2   2   2   2   2
+                                3   4   5   5   5   3   4   4   4   3   3   3   3
+        
+        Algoritmo LRU:  1   1   1   4   4   4   2   2   2   1   1   1   1   1   1
+                            2   2   2   5   5   5   3   3   3   2   2   2   2   2
+                                3   3   3   1   1   1   4   4   4   3   3   3   3
+
+b)
+
+    Bisogna arrivare a 1234: (non è specificato l'algoritmo, basterebbe usare FIFO con stringa dei riferimenti 1234)
+
+                        4   1   1   1   1
+                        3   3   2   2   2
+                        2   2   2   3   3
+                        1   1   1   1   4
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+
+a) Se un sistema ha una RAM molto ampia puo' non essere utile usare la memoria virtuale. In questo caso ha senso egualmente
+usare la paginazione di memoria? Perche'?
+
+    Beh si, è difficile che i programmi abbiano bisogno di essere inseriti in RAM per intero e la paginazione aiuterebbe ad inserire
+    in RAM più programmi (il fatto che la memoria è ampia diminuirebbe notevolmente il numero di page fault).
+    Inoltre in base al tipo di paginazione che andiamo ad utilizzare possiamo ridurre la frammentazione.
+
+b) Perche' i metodi di sincronizzazione tipo test&set (detti anche spinlock) assumono grande rilevanza nella scrittura di sistemi
+operativi multiprocessore?
+
+    Perchè il semplice mascheramento degli interrupt non è sufficiente a garantire la mutua esclusione sulle aree di memoria condivise.
+    (anche in sistemi multiprocessore la TeS è eseguita in modo sequenziale tra più processori).
+
+c) Confrontare gli alogritmi di scheduling roud robin e a priorita' statica. Indicare in quali casi sono da usare algoritmi di tipo round
+robin e quando quelli a priorita' statica.
+
+    Nell'algoritmo RoundRobini viene assegnato un timeslice ad ogni processo in esecuzione sulla cpu, e dopo questo tempo il processo 
+    corrente viene cambiato (notare che RR è preemptive quindi non per forza si aspetta la fine del timeslice prima di cambiare processo)
+    Nell'algoritmo a priorità statica i processi vengono eseguiti secondo l'ordine dettato dalla loro priorità (non preemptive).
+
+    L'algoritmo round robin in generale è molto efficiente se viene scelto il timeslice giusto, ma è inadatto quando si ha a che fare con 
+    processi multimediali o che hanno maggiore priorità di essere eseguiti.
+    L'algoritmo a priorità statica ha il problema opposto, infatti è pericoloso utilizzarlo quando ci sono processi a bassa priorità, poichè
+    il continuo arrivo di processi a priorità più alta causerebbe loro starvation.

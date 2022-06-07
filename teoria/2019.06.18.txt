@@ -1,0 +1,242 @@
+Esercizio c.1: 
+
+passaggio di dati uno o centomila ma non nessuno.
+Scrivere un monitor con due procedure entry:
+put(T dato);
+T get(void);
+Esistono due tipi di processo: gli scrittori che chiamano put e i lettori che chiamano la get.
+La put deve fare in modo che tutti i lettori in attesa, qualora ve ne siano, ricevano il dato passato come parametro. Se
+non ci sono lettori in attesa la put deve attendere la prima chiamata della procedure entry get e trasferire il dato. Se ci
+sono già scrittori in attesa, il nuovo scrittore si mette in coda (ordine FIFO).
+La get quindi se c'è uno scrittore in attesa deve ritornare il dato del primo scrittore in attesa (e sbloccare lo scrittore),
+altrimenti deve attendere la prossima chiamata della procedure entry put.
+Domanda ulteriore: è possibile implementare il monitor con una sola variabile di condizione? Perché?
+
+Svolgimento:
+
+monitor lettscritstrano{
+
+    condition ok2write;
+    condition ok2read;
+    T passData;
+    ww = wr = 0;
+
+    entry void put(T data){
+        if( ww > 0 || wr == 0  ) {
+            ww++;
+            ok2write.wait();
+            ww--;
+        }
+        passData = data;
+        ok2read.signal();
+
+    }
+
+    entry T get(){
+        if(ww > 0) ok2write.signal();
+        else {
+            wr++;
+            ok2read.wait();
+            wr--;
+        }
+        myData = passData;
+        ok2read.signal();
+        return myData;
+    }
+
+
+}
+
+Risposta alla domanda ulteriore: non è possibile utilizzare un unica variabile di condizione, in quanto bisogna distinguere tra lettori e scrittori in attesa.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+class semaphore {
+    int value;
+    int blocked = 0;
+    binary_semaphore mutex(1);
+    binary_semaphore sem(0);
+
+    void init(int initval) {
+        value = initval;
+    }
+
+    void P() {
+        mutex.P();
+        if (value == 0) {
+            blocked++;
+            mutex.V();
+            sem.P();
+            blocked--;
+        }
+        value--;
+        mutex.V();
+    }
+
+    void V() {
+        mutex.P();
+        value++;
+        if (blocked > 0)
+            sem.V();
+        else
+            mutex.V();
+    }
+
+} // class semaphore
+
+In questa implementazione di semafori generali dati semafori ordinari:
+a) viene usata la tecnica di passaggio del testimone (passing le batôn), spiegare come è usata e quale effetto ha.
+
+    La tecnica del passaggio del testimone viene utilizzata tra la void P() e la void V() per passare la mutua esclusione.
+    Questa tecnica va utilizzata perchè nel momento in cui la P deve bloccare il processo su un semaforo non può farlo in mutua esclusione, altrimenti
+    il sistema andrebbe in blocco. Per sopperire a questo, la P rilascia la mutua esclusione e subito dopo blocca il processo su di un semaforo.
+    Il passaggio del testimone avviene quando nel momento in cui la V sta risvegliando il processo bloccato su di un semaforo gli "passa" la mutua esclusione,
+    ovvero il processo risvegliato avrà la mutex.
+
+b) questa implementazione non garantisce la FIFONESS di riattivazione dei processi bloccati, mostrare perché.
+
+    In questa implementazione non è garantita la fifoness, ma è una peculiarità del passaggio del testione, infatti dopo che il processo che ha effettuato la P
+    rilascia la mutua escludione, prima di bloccarsi sul semaforo potrebbe essere preceduto da un altro processo.
+
+c) modificare il codice, mantenendone la struttura, per ottenere una soluzione che risolva il problema del punto 2
+
+Versioe modificata:
+
+
+class semaphore {
+    int value;
+    int blocked = 0;
+    binary_semaphore mutex(1);
+    binary_semaphore queue q;
+
+    void init(int initval) {
+        value = initval;
+    }
+
+    void P() {
+        mutex.P();
+        value--;
+        if (value < 0) {
+            blocked++;
+            sem = new semaphore(0)
+            q.enqueue(sem)
+            mutex.V();
+            sem.P();
+            blocked--;
+        }
+        mutex.V();
+    }
+
+    void V() {
+        mutex.P();
+        value++;
+        if (blocked > 0)
+            sem = q.dequeue()
+            sem.V();
+        else
+            mutex.V();
+    }
+
+} // class semaphore
+
+(non sono sicuro al 100%)
+In questo modo la turnazione per il rilascio viene stabilita in base alla coda, che è riempita in mutua esclusione, anche se il blocco avviene dopo che questa è stata rilasciata.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Costruire Grafi di di Holt che abbiano tutte le seguenti proprietà:
+• la situazione sia di Deadlock
+• non sia sufficente eliminare un processo perché il Deadlock venga risolto
+• ogni processo abbia esattamente una richiesta in sospeso
+• il grafo sia connesso (ci sono archi fra nodi di partizioni diverse comunque si partizioni l'insieme dei nodi)
+Caso A: costruire (se possibile) un grafo con 5 processi e 5 classi di risorse.
+Caso B: costruire (se possibile) un grafo con 5 processi e 4 classi di risorse.
+Caso A: costruire (se possibile) un grafo con 4 processi e 5 classi di risorse.
+
+A:
+    processi: p1,p2,p3,p4,p5
+    risorse: A,B,C,D,E
+
+    P1 
+        Ha: C
+        Richiede: A
+    P2 
+        Ha: A
+        Richiede: B
+    P3 
+        Ha: B
+        Richiede: A
+    P4 
+        Ha: C,E
+        Richiede: E
+    P5 
+        Ha: D
+        Richiede: E
+
+B:    
+    Dopo una prima analisi non mi sembra realizzabile
+
+C: 
+
+    processi: p1,p2,p3,p4
+    risorse: A,B,C,D,E
+
+    P1 
+        Ha: B
+        Richiede: A
+    P2 
+        Ha: A,C
+        Richiede: B
+    P3 
+        Ha: C,E
+        Richiede: D
+    P4 
+        Ha: D
+        Richiede: E
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+rispondere alle seguenti domande:
+
+a) Dati 4 dischi da 1GiB, si possono memorizzare più dati usando una organizzazione RAID10 o RAID5? Perché?
+
+    La differenza sostanziale a livello di storage (e non di performance) è che in Raid5 c'è una sola strip di parità, 
+    mentre con raid 10 (proprio perchè contiene raid 1) abbiamo mirroring, andando di fatto a dimezzare lo spazio a disposizione. 
+
+b) Dimostrare che se un algoritmo di rimpiazzamento è a stack allora non può soffrire della anomalia di Belady
+
+    L'anomalia di Belady ci dice che con alcuni algoritmi di rimpiazzamento, aumentare il numero di frame a disposizione non 
+    diminuisce il numero di page fault, ma bensì ottiene il risultato opposto.
+    Sappiamo per un teorema visto a lezione che un algoritmo di rimpoiazzamento a stack non può soffrire dell'anomalia di Belady. 
+
+    sappiamo che un algoritmo è detto a stack se vale la seguente relazione: St(s, A,m) sottoinsieme di St(s, A,m+1)
+    ovvero:
+    -sia A l'algoritmo usato
+    -sia t il tempo fissato
+    -sia m il numero di frame in memoria
+    -sia s la stringa dei riferimenti
+
+    allora l'insieme delle pagine mantenute in memoria a tempo t con m frame in memoria, è sottoinsieme dello stesso 
+    insieme ma considerando m+1 frame 
+
+    grazie semplicemente a questa definizione capiamo che non può verificarsi l'anomalia di Belady.
+
+c) Quali sono le differenze fra un device driver di una unità con funzionalità di DMA e quello di una unità senza DMA?
+
+    Se è presente il DMA abbiamo possibilità di accedere direttamente al dato interessato in memoria semplicemente indicando l'indirizzo di 
+    quest ultimo, mentre senza DMA dobbiamo interpellare la CPU.
+    A discapito di rendere più semplici i device driver e più leggero il carico di lavoro per la CPU, dobbiamo considerare che in questo 
+    modo il bus dati sarà spesso conteso. 
+
+d) Come vengono memorizzati i link simbolici in un filesystem?
+
+    per memorizzare un link simbolico viene creato un tipo speciale di directory entry, che contiene un riferimento 
+    (sotto forma di cammino assoluto) al file in questione. Quando viene fatto un riferimento al file: si cerca nella directory, 
+    si scopre che si tratta di un link, viene risolto il link (ovvero, viene utilizzato il cammino assoluto registrato nel file

@@ -1,0 +1,106 @@
+Esercizio c.1: 
+
+Scrivere un monitor vBB che realizzi un bounded buffer a dimensione variabile.
+Le procedure entry da implementare sono read, write e resize. Read e write hanno gli stessi parametri del BB ordinario.
+La funzione resize ha come parametro un numero intero positivo che rappresenta la nuova dimensione del buffer espressa in numero
+di elementi. Inizialmente il bounded buffer ha dimensione DEFAULTSIZE. Se la dimensione viene incrementata I processi
+eventualmente in attesa di scrivere devono poter inserire I loro elementi nel buffer fino a che e' consentito della nuova dimensione.
+Se la dimensione diminuisce, nuovi scrittori potranno inserire elementi nel buffer solo quando sara' possibile farlo in modo coerente
+con il nuovo numero massimo di elementi.
+
+Svolgimento:
+
+Nota: inserirò un controllo che impedisca di fare un resize ad un numero minore degli elementi attualmente nel buffer.
+
+#define DEFAULTSIZE ...
+
+monitor vBB{
+
+    int ww = 0;
+    condition ok2write, ok2read;
+    buffer queue(DEFAULTSIZE);
+    int actualSize = DEFAULTSIZE
+
+
+    entry void write(generic_type value){
+        if( buffer.length == actualSize ){
+            ww++;
+            ok2write.wait();
+            ww--;
+        }
+        buffer.enqueue(value);
+        if(ww > 0 && buffer.length < actualSize) ok2write.signal();      //prima o poi il buffer sarà pieno
+        else ok2read.signal();
+    }
+
+    entry generic_type read(){
+        if(buffer.length == 0){
+            ok2read.wait();
+        }
+        value = buffer.dequeue();
+        ok2write.signal();
+        return value;
+    }
+
+    entry void resize(unsigned int newSize){
+        actualSize = newSize;
+        buffer.resize(newSize);
+        if(buffer.length < newSize) ok2write.signal();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2: 
+
+dato un servizio di message passing asincrono (FIFO), scrivere un servizio di message passing asincrono LIFO senza
+fare uso di processi server.
+Le primitive da implementare sono lsend(dest, msg) e lrecv(). Lsend non ha alcun valore di ritorno, lrecv restituisce l'ultimo
+messaggio ricevuto da qualsiasi mittente. Sia il servizio disponibile sia quello da realizzare sono asincroni (send mai bloccante, recv
+bloccante in assenza di messaggi, in altre parole non sono completamente asincroni)
+
+Svolgimento:
+
+    function lsend(dest,msg){
+        asend(dest,msg);
+    }
+
+    function lrecv(){
+        msg_t stack s;
+        msg_t queue q;
+        msg_t toReturn
+        
+        asend(getPid(), TAG);
+        msg = arecv(*)
+        while(msg != TAG){
+            s.push(msg)
+            q.enqueue(msg);
+            msg = arecv(*);
+        }
+        if (s.isEmpty) toReturn = arecv(*)              //non erano presenti messaggi, mi blocco in attesa del primo
+        else toReturn = s.pop();
+
+        while(q.length > 1) asend(getPid(), q.dequeue());
+
+        return toReturn;
+
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1: 
+
+Sia dato questo programma:s
+
+    Program P:
+        for (i=0;i<2;i++) {
+            long_compute();
+            io_on_dev();
+            }
+        short_compute();
+
+long compute impiega 4 ms, short compute 1 ms e io_on_dev impiega 2ms. (tutti I processi condividono la stessa risorsa di I/O)
+Considerando in un sistema di elaborazione dove sono in esecuzione tre istanze del programma P che sono state attivate ai tempi 0,
+5 e 10ms e che il sistema usa uno shortest remaining time first (SRTF) disegnare il diagramma di Gannt dell'esecuzione. (SRTF e'
+preemptive). In caso di processi con lo stesso tempo rimanente di esecuzione lo scheduler si comporta come un FCFS (first come
+first served).
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

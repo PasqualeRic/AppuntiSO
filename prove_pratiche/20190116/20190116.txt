@@ -1,0 +1,28 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Usando inotify creare il programma neverm che controlli una directory. Ogni volta che viene
+cancellato un file nella directory sotto osservazione crei un file vuoto di uguale nome. Per esempio
+eseguendo
+neverm dir
+dove dir e' una directory contenente i file a, b, c, anche a seguito dei comandi 'rm dir/a' e 'rm dir/b',
+dir deve contenere sempre i file a, b e c, a e b saranno file vuoti.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+modificare neverm per fare in modo che neverm ripristini anche il contenuto dei file a seguito della
+cancellazione (il modo è lasciato alla creatività del candidato)
+
+
+
+Esercizio 3: Python o bash: (10 punti):
+getent passwd
+mostra l'intero elenco degli utenti del sistema distribuito del dipartimento in formato passwd(5).
+Scrivere uno script o un programma Python che elaborando opportunamente l'output di 'getent
+passwd' conti gli utenti a seconda della directory dove e' posta la home:
+e.g.
+/home/faculty 65
+/home/students 2496
+...
+e cosi' via. Il programma deve poter funzionare in sistemi che usano una diversa suddivisione delle
+home degli utenti (cioé nel programma non devono comparire costanti come /home/faculty o simili,
+le categorie devono venir calcolate a partire dal campo 'home' del formato).

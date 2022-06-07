@@ -1,0 +1,27 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti.
+Il comando abslink, da implementare, deve sostituire un link simbolico con uno equivalente che sia
+un riferimento ad un path assoluto.
+Ad esempio: se mylink e' nella directory /home/user e punta a myfile, 'abspath mylink" deve sostituire
+mylink con un symbolic link a /home/user/myfile.
+Hint: considerate l'uso della funzione realpath.
+
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Scrivere il comando absls che mostri per ogni file della directory passata come parametro il path
+completo di ogni file (mostrando al posto dei link simbolici il path completo dei file puntati).
+
+
+
+Esercizio 3: Python o bash: (10 punti)
+Scrivere un programma python o uno script bash che produca il listato del contenuto di una directory
+in ordine di suffisso.
+
+
+
+Esercizio 4: (“Consegnate! E’ ora!”):
+Consegnare lo script e il sorgente dei programma C, in attachment separati, entro il tempo a
+disposizione, via e-mail a: renzo chiocciola cs.unibo.it. Il subject del mail deve essere uguale a
+PROVAPRATICA, i nomi dei file in attachment devono contenere il vostro cognome (per evitare
+confusioni in fase di correzione).

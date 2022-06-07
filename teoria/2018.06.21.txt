@@ -1,0 +1,207 @@
+Esercizio c.1: 
+Per raggiungere un'isola con l'autovettura occorre un traghetto. Il traghetto di questo esercizio ha una sola rampa sulla
+quale può transitare una automobile alla volta.
+Il traghetto può imbarcare al massimo MAX automobili. Il traghetto parte solo quando è completamente carico. Occorre disimbarcare
+tutte le auto prima di imbarcare quelle che desiderano fare la traversata in senso contrario. Le auto possono essere sbarcate in
+qualsiasi ordine purché una sola alla volta passi sulla rampa.
+
+Il processo traghetto è il seguente:
+ 
+     traghetto: process:
+        while True:
+            tmon.al_porto(TERRAFERMA)
+            ... naviga
+            tmon.al_porto(ISOLA)
+            ... naviga
+
+Mentre le auto per usare il traghetto chiamano uno dei due segmenti di codice:
+    
+    tmon.imbarca(TERRAFERMA)                       tmon.imbarca(ISOLA)
+    /* sulla rampa */                              /* sulla rampa */
+    tmon.imbarcato(TERRAFERMA)                     tmon.imbarcato(ISOLA)
+    /* sulla nave */                               /* sulla nave */
+    tmon.sbarca(ISOLA)                             tmon.sbarca(TERRAFERMA)
+    /* sulla rampa */                              /* sulla rampa */
+    tmon.sbarcato(ISOLA)                           tmon.sbarcato(TERRAFERMA)
+
+Scrivere il monitor tmon.
+
+Svolgimento:
+
+monitor tmon{
+
+    boolean rampInUse;
+    boolean port;
+    boolean loading;
+
+    condition startTrip;
+    waitingAtPort = condition array[2]                              //0 for TERRAFERMA, 1 for ISOLA usando la funzione getCondNumber(porto)
+    condition waitingOnBoat
+
+    int carsInLoading = 0;
+    int carsInDeloading = 0;
+    string currentPlace;
+
+    entry void al_porto(porto){
+        currentPlace = porto;                               //Settiamo le variabili di arrivo al porto
+        port = true;     
+        rampInUse = false;                          
+        carsInDeloading = carsInLoading;
+        carsInLoading = 0;
+        if(carsInDeloading == 0){                           //se è il primo attracco della giornata non ci sono macchine da scaricare
+            loading = true;
+            condNumber = getCondNumber(porto);
+            waitingAtPort[condNumber].signal();
+        }else{                                                  //altrimenti facciamo scaricare prima di far salire
+            loading = false;
+            waitingOnBoat.signal()
+        }
+        startTrip.wait();                                   //la barca aspetta di riempirsi
+        port = false;
+    }
+
+    entry void imbarca(porto){
+        condNumber = getCondNumber(porto);
+        if(!( port && carsInLoading+1 < MAX && loading && porto == currentPlace && !rampInUse)) {    
+            waitingAtPort[condNumber].wait();
+        }
+        carsInLoading++;
+        rampInUse = true;
+    }
+    
+    entry void imbarcato(porto){
+        condNumber = getCondNumber(porto);
+        rampInUse = false;
+        if(cars == MAX) startTrip.signal();
+        else waitingAtPort[condNumber].signal();
+    }
+    
+    entry void sbarca(porto){
+        if(!(port && porto == currentPlace && !rampInUse)) {    
+            waitingOnBoat.wait();
+        }
+        carsInDeloading--;
+        rampInUse = true;
+    }
+    
+    entry void sbarcato(porto){
+        condNumber = getCondNumber(porto);
+        rampInUse = false;
+        if(carsInDeloading == 0 ) waitingAtPort[condNumber].signal();
+        else waitingOnBoat.signal();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Facendo uso di semafori ordinari implementare semafori a limite intero N che possano assumere valori -N, -N+1, ...,-1, 0, 1, ..., N-1, N.
+    
+L'invariante dei semafori a limite intero di questo esercizio è:  nP - N <= nV + init <= nP + N
+
+dove nP è il numero di operazioni P completate, nV il numero delle operazioni V completate e init è il valore iniziale del semaforo
+
+Svolgimento:
+
+class semint:
+
+    int N;
+    int value;
+    wp = wv = 0;
+
+    semV = new semaphore(0);
+    semP = new semaphore(0);
+    mutex = new semaphore(1);
+
+    void init(val,limit){
+        value = val;
+        N = limit;
+    }
+
+    void P(){
+        mutex.P();
+        value--;
+        if(value < (-1 * N)){
+            wp++;
+            mutex.V();
+            semP.P();
+            wp--;
+        }
+        semV.V();
+        mutex.V();
+    }
+
+    void V(){
+        mutex.P();
+        value++;
+        if(value > N){
+            wv++;
+            mutex.V();
+            semV.P();
+            wv--;
+        }
+        semP.V();
+        mutex.V();
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Costruire uno stato di un banchiere a tre valute in modo che sia unsafe. Questo stato deve essere tale che
+aggiungendo una istanza (una unita' di valuta) di ogni valuta lo stato torni safe ma se si aggiungesse una unita' a solamente una o
+due valute rimarrebbe unsafe. Ricordarsi che, per ogni valuta, il fido concesso ad ogni cliente deve essere minore o uguale della
+dotazione totale del banchiere.
+
+Svolgimento:
+
+prendiamo 3 processi: P1,P2,P3
+Dove:
+- c P1: (3,2,3) 
+- c P2: (3,3,3)
+- c P3: (2,3,3)
+Chiedono un prestito in questo ordine:
+- P1:   (2,0,0)
+- P2:   (0,3,0)
+- P3:   (1,0,2)
+
+(3,2,3) -> (3,5,3) -> (5,5,5)
+per essere safe dovremmo avere un capitale minimo: (5,5,5)
+quindi per ottenere lo stato voluto basta diminuire di 1 le tre valute, ovvero: (4,4,4)
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) A cosa serve e quando viene eseguito l'algoritmo di calcolo del working set?
+
+    L'algoritmo per il calcolo del working set serve a determinare quanti e quali processi mantenere attivi basandosi sul numero
+    di pagine di cui questi necessitano per la loro esecuzione. Questa operazione si rende necessaria per evitare il presentarsi di trashing, 
+    ovvero una situazione in cui i processi attivi passano più tempo in fase di page fault che ad essere eseguiti. 
+
+b) Come si calcola la lunghezza massima di un file che si può memorizzare su un file system di tipo fat?
+
+    La massima dimensione di un file in un filesystem di tipo FAT è data da 2^N byte, dove N è il numero presente nella versione di FAT
+    che stiamo utilizzando (12,16,32..) ed è il numero di bit disponibili per indirizzare i cluster.
+
+c) Quali sono le differenze fra un virus e un worm? come ci si difende da questi tipi di malware?
+
+    Le principali differenz sono:
+    - I worm operano sulle reti, mentre i virus possono usare qualunque supporto
+    - I worm sono programmi autonomi, mentre i virus infettano programmi esistenti
+
+    La principale difesa contro questi malware è la prevenzione. 
+    In particolare è necessaria una buona dose di attenzione nell'uso degli elaboratori (soprattutto quando si ha a che fare con internet) 
+    e a seconda del sistema può essere utile un antivirus. 
+
+d) In quali casi la ready queue di uno scheduler può essere vuota? Sono casi fisiologici o patologici della vita di un sistema?
+    
+    Anche se la ready queue è vuota, non vuo dire che non ci sono processi attivi, semplicemente potrebbero essere in stato di
+    wait su qualche dispositivo di I/O (ovviamente è un caso molto particolare). 

@@ -1,0 +1,202 @@
+Esercizio c.1: 
+
+Una gara di lancio del giavellotto prevede che tutti gli atleti in gara facciano tre tiri. Lancia un atleta alla volta seguendo
+l’ordine numerico.
+
+    Atleta: process i=0..NATLETI-1:
+        while giav.pronto(i)
+            // lancia
+            giav.lanciato(i);
+
+    Giudice: process
+        while (i=giav.lanciofatto()) >= 0:
+            m = misuralancio()
+            giav.registraechiama(i, m)
+        v = giav.classifica().
+
+Il giudice di volta in volta attende in “lanciofatto” fino a quando il giocatore corrente non ha lanciato, misura la distanza del lancio e la
+registra, solo a quel punto il prossimo giocatore puo’ lanciare. Scrivere il monitor giav.
+
+Nota: non avevo letto fosse necessario seguire l'ordine numerico.
+Per implementare quest altra versione basta un array di condizioni su cui bloccare gli atleti fino al loro turno, invece di wait4turn
+
+monitor giav{
+
+    struct classific{
+        int atleta;
+        double misura;
+        classific* next;
+    }
+    
+    bool giavOccupato = false;
+    bool last = false;
+    bool stop = false;
+    int atletaCheLancia;
+    classific* c;
+    int numLancio = 1;
+
+    condition wait4turn;
+    condition ok2measure;
+    condition wait4measurement;
+
+    entry bool pronto(atleta){
+        if(giavOcuupato && atletaCheLancia != atleta) wait4turn.wait(); 
+        giavOccupato = true;
+        atletaCheLancia = atleta;
+        if(numLancio > 3){
+            numLancio = 1;
+            giavOcuupato = false;
+            wait4turn.signal();
+            if(atletaCheLancia == NATLETI-1) last=true;
+            return false;
+        }else return true;
+    }
+
+    entry void lanciato(atleta){
+        ok2measure.signal();
+        wait4measurement.wait();
+        numLancio++;
+    }
+
+    entry int lanciofatto(){
+        if(stop) return false;
+        ok2measure.wait();
+        if(last) stop = true;
+        return atletaCheLancia;
+    }
+
+    entry void registraechiama(atleta, misura){
+        addOrderedByMeasure(c, atleta, misura)              //La funzione si occupa anche di controllare se 
+        wait4measurement.signal();                          //l atleta aveva già lanciato e in tal caso tiene il punteggio migliore    
+    }
+
+    entry classific* classifica(){
+        return c;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Quali fra le seguenti funzioni possono essere usate al posto della test&set per realizzare un servizio di spinlock in un
+sistema nel quale la scrittura di una variabile globale non sia una funzione atomica?
+i) foo(a,b,c): <if (random(0,1)) {a=b; b=c} else {c=b; b=a}> (random(0,1) genera a caso un valore 0 o 1)
+ii) bar(a,b): <x=a & 1; a = (a >> 1) | b << 31; b = x>
+In tutte le funzioni i parametri sono passati per indirizzo.
+
+I) entrando con (1,b,1) e usando b come globale inizialmente in ingresso a 0 dovremmo riuscire ad otenere un risultato simile alla test and set.
+   In praticolare B diventerà 1 finche non verrà modificata dall esterno. 
+
+   global b = 0;
+   mutex_in():
+    do
+        a = c = 1;
+        foo(a,b,c)
+    while(b == 1)
+
+    mutex_out():
+        int ok = 0;
+        foo(ok,b,ok);
+
+II) bar(a,b): <x=a & 1; a = (a >> 1) | b << 31; b = x>
+
+    global b = 1
+    mutex_in():
+        int a = 0
+        do
+            bar(a,b)
+        while(a == 0)
+
+    mutex_out():
+        int a = 1
+        bar(a, b)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Siano dati due processi in esecuzione in un sistema monoprocessore e gestiti da uno scheduler round-robin.
+I due processi sono gli unici nel sistema e usano la stessa unità di I/O gestita in modo FIFO.
+
+    PA: 1ms CPU, 2ms I/O, 1ms CPU, 6ms I/O, 1ms CPU
+    PB: 2ms CPU, 1ms I/O, 6ms CPU, 1ms I/O, 1ms CPU
+
+Quale è il tempo minimo e quale il tempo massimo impiegato dal sistema per completare l’elaborazione dei due processi al variare
+della lunghezza del quanto di tempo e della posizione iniziale dei processi nella ready queue (PA precede PB o viceversa).
+
+caso TS = 1;
+
+- prima B poi A
+
+    CPU: PB PA PB    PA PB PB PB PB PB PB PA PB
+    I/O:       PA PA PB PA PA PA PA PA PA PB
+
+    Tempo totale: 13ms
+
+- prima A poi B
+
+    CPU: PA PB PB PA PB PB PB PB PB PB PA PB
+    I/O:    PA PA PB PA PA PA PA PA PA PB
+
+    Tempo totale 12ms che sarà sicuramente il tempo minimo.
+
+caso TS = 2;
+
+- prima B poi A
+
+    CPU: PB PB PA PB PB PA PB PB PB PB       PA PB
+    I/O:       PB PA PA    PA PA PA PA PA PA PB 
+
+    Tempo totale: 14ms
+
+- prima A poi B
+
+    CPU: PA PB PB PA PB PB PB PB PB PB PA PB
+    I/O:    PA PA PB PA PA PA PA PA PA PB
+
+    Tempo totale: 12ms                                      Nota: se inizia A è sempre così
+
+caso TS = 3;
+
+- prima B poi A
+
+    CPU: PB PB PA PB PB PA PB PB PB PB       PA PB
+    I/O:       PB PA PA    PA PA PA PA PA PA PB
+
+    Tempo totale: 14ms                                      Nota: se inizia B con TS > 1 è sempre così
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) perché aumentando la dimensione dell’area di memoria secondaria usata dalla memoria virtuale si corre rischio di trashing?
+
+    Aumentare tale dimensione significa poter permette a un maggior numero di processi di poter andare in esecuzione,
+    questo può portare a trashing in quanto un maggior numero di processi implica un maggior numero di pagine necessario per
+    portare avanti i processi.
+
+b) cosa provoca la scelta errata della durata del quanto di tempo in uno scheduler round robin?
+
+    La durata del quanto di tempo è un parametro critico del sistema, infatti se il quanto di tempo è breve, il sistema è meno 
+    efficiente perchè deve cambiare il processo attivo più spesso, mentre se il quanto è lungo, in presenza di numerosi processi pronti 
+    ci sono lunghi periodi di inattività di ogni singolo processo (in sistemi interattivi, questo può essere fastidioso per gli utenti).
+
+c) quali sono le condizioni necessarie per poter applicare l’algoritmo del banchiere
+
+    Le condizioni necessarie per applicare l'algoritmo del banchiere sono:
+    - Il credito chiedibile da ogni processo (per ogni valuta nel caso del banchiere a più valute) deve
+      essere minore alla disponibilità del banchiere
+    - Ogni processo deve sapere le risorse di cui ha bisogno
+    - I processi una vlta ricevute tutte le risorse di cui hanno bisogno devono restituirle in tempo finito
+
+d) quali sono i vantaggi di usare una FAT rispetto ad una allocazione concatenata dove l’indirizzo del prossimo blocco dati viene
+   memorizzato nel blocco dati stesso?
+
+    L'allocaizone di tipo FAT permette di avere l'intero blocco dedicagto ai dati (fondamentale in quanto sarebbero necessarie 
+    ulteriori operazioni per restiuire il blocco dati pulito dal valore del puntatore)
+    E' possibile fare caching della tabella FAT rendendo così l'accesso più veloce.
+    L'accesso diretto diventa efficente rispetto alla lista concatenata in quanto il dover scandire una lista
+    porta a diverse operazioni di seek che sono molto lente

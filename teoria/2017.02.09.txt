@@ -1,0 +1,41 @@
+Esercizio g.1:
+
+Una partizione contiene un file systems ext2. Nella directory radice all’interno della partizione ci sono tre directory: una chiamata
+“lost+found” (quella standard per il controllo di coerenza), una seconda chiamata “dev” ed una terza “dir”.
+La directory “dev” contiene un file speciale a caratteri denominato “null” che ha major number 1 e minor number 3.
+La directory “dir” contiene:
+* “null.phy” che è un link fisico al file “null” della directory “dev”.
+* “null.sym” è un link simbolico che punta a “../dev/null”.
+La directory “lost+found” è vuota.
+Spiegare come funziona il file system di tipo ext2 e mostrare il contenuto di tutte le strutture dati relative al caso qui illustrato
+
+Svolgimento:
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+
+Perché uno scheduler non preemptive non è adatto per processi interattivi?
+
+    Perchè la presenza di un processo CPU bound potrebbe rallentare l'accesso alla risorsa a processi che necessitano di tempi 
+    di risposta all'utente rapidi. Essendo lo scheduler non preemptive un processo potrebbe detenere l'esecuzione per un tempo considerevole
+    e altri processi dovrebbero attendere.
+
+Quando è sconsigliato usare un meccanismo di protezione di accesso di tipo Access Control List?
+
+    Utilizzare le ACL può diventare inefficiente in termini di performance quando si devono assegnare privilegi ad una grande quantità di utenti 
+    che non sono accomunabili allìinterno di un gruppo o dominio, infatti questo andrebbe ad aumentare le dimensioni della tabella delle ACL, 
+    rendendo la scansione più pesante.
+
+Perché l’algoritmo di rimpiazzamento LRU non viene in pratica utilizzato nell’implementazione della memoria virtuale?
+
+    LRU risulta molto pesante da implementare e necessita di hardware apposito per gestire i time-stamp o di 
+    una considerevole quantità di accessi in memoria per gestire uno stack.
+
+Dati N dischi aventi le stesse caratteristiche, il tempo medio di accesso è minore se creiamo con essi un cluster RAID0 o uno RAID5?
+Stimare la perdita di prestazione del più lento rispetto al più veloce.
+
+    RAID 0 risulta più performante di RAID 5, in quanto non implementa alcun tipo di ridondanza nei dischi.
+    Questo però ovviamente porta ad un azzeramento delle misure di protezione dei dati, che invece RAID 5 offre.

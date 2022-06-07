@@ -1,0 +1,25 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Usando pthread_create occorre creare due thread che chiameremo produttore e consumatore.
+Il thread produttore ripetutamente genera un numero causuale, lo stampa lo mette in una variabile
+condivisa con il consumatore e attende (ritardo casuale). Il thread consumatore legge dalla variabile
+condivisa i valori e li stampa (anche il consumatore attende per un periodo casuale prima di tentare di
+leggere il valore successivo)
+Ogni valore prodotto deve venir consumato una e una sola volta, per la sincronizzazione si richiede di
+usare eventfd in modalità EFD_SEMAPHORE.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Scrivere una shell minimale usando la libreria s2argv/execs (da scaricare da github).
+La shell deve eseguire comandi con o senza parametri e terminare con logout o fine del file di input
+(^D).
+
+
+
+Esercizio 3: Python o bash: (10 punti):
+Rielaborando l'output del comando:
+echo "#include<sys/syscall.h>" | gcc -dD -E -
+scrivere un programma python o uno script bash che generi automaticamente un programma C che
+consenta di associare ogni syscall al suo numero e viceversa.
+es: "sysnumber fork" deve restituire 57 mentre "sysnumber 72" deve avere come risposta fnctl
+(l'esempio si riferisce a sistemi di architettura x86_64)

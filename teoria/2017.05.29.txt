@@ -1,0 +1,214 @@
+Esercizio c.1: 
+
+Un professore di Sistemi Operativi organizza una partita a rubabandiera ai giardini margherita come evento di fine
+corso. Partecipano alla gara due squadre da MAX studenti ognuna (gli studenti sono numerati da 0 a MAX-1, le squadre si chiamano
+A e B). Il professore puo’ chiamare 1 studente (rubabandiera classico), 2 studenti (uno sulle spalle dell’altro), 3 studenti (seggiolino) o
+quattro studenti (aeroplano).
+Il processo professore e’ il seguente:
+
+    A=0
+    B=1
+    process prof:
+        rb.nuovapartita()
+        while True:
+            punteggio = rb.chiama(listarandom(MAX)) # genera una lista di 1, 2, 3 o 4 elementi
+            print(punteggio[A], ":", punteggio[B])
+            if max(punteggio) == 10:
+                break
+
+I processi studente/studentessa sono rappresentati dal seguente codice
+
+    process studente(squadra, numero):
+        while True:
+            if rb.pronto(squadra, numero):
+                break
+            rb.allabandiera(squara, numero)
+
+Regole (del modello): il prof inizia la partita con nuovapartita ponendo il risultato iniziale sullo 0 a 0. Durante la partita pensa la lista
+dei numeri ma sblocca gli studenti solo se tutti sono in pronto, altrimenti aspetta.
+Vince un punto la squadra che per prima arriva alla bandiera (tutti i componenti chiamati dal prof sono allabandiera).
+La procedure entry chiama restituisce il punteggio attuale. La procedure entry pronto restituisce 0 normalmente, un valore diverso da
+zero indica il termine della partita.
+
+Svolgimento:
+
+Non ho capito se quelli che si sono messi in stato di pronto ma non sono stati chiamati, alla fine della manche devono nuovamente mettersi in 
+stato di pronto. (Io personalmente l'ho ritenuto giusto)
+
+monitor rb{
+    
+    punteggio = new int array(2);
+    condA = new condition array(MAX);
+    condB = new condition array(MAX);
+    listaProf = new int array(4);
+    listaArrivatiB = new int array(4);
+    listaArrivatiA = new int array(4);
+
+    int numPronti;
+    bool inGame;
+    int arrivatiA;
+    int arrivatiB;
+    int winner;
+    int numChiamati;
+    
+    
+    entry void nuovapartita(){
+        punteggio = [0,0]
+        inGame = true;
+        arrivatiA = 0;
+        arrivatiB = 0;
+        numPronti = 0;
+    }
+
+    entry int[] chiama(lista){
+        arrivatiA = 0;
+        arrivatiB = 0;
+        numPronti = 0;
+        numChiamati = lista.length;
+        listaProf = lista;
+        if(!pronti) wait4students.wait();
+        for(int i=0; i<lista.length; i++){
+            condA[lista[i]].signal();
+            condB[lista[i]].signal();
+        }
+        wait4endGame.wait();
+        punteggio[winner]++;
+        if(max(punteggio) == 10){
+            inGame = false;
+        }
+        for(int i=0; i<MAX; i++){               //alla fine di una manche libero sempre tutti i processi in attesa e aspetto che si rimettano in pronto.
+            condA[lista[i]].signal();
+            condB[lista[i]].signal();
+        }
+        return punteggio;
+    }
+
+    entry int pronto(squadra, numero){
+            if(squadra){ 
+                numPronti +=1;
+                if(numPronti == MAX *2) wait4students.signal();      
+                else condB[numero].wait(); 
+                if(inGame) return 0
+                else return 1                       
+            }
+            else {
+                numPronti +=1;
+                if(numPronti == MAX *2) wait4students.signal();
+                else condA[numero].wait(); 
+                if(inGame) return 0
+                else return 1   
+            }                              
+    }
+
+    entry void allabandiera(squadra, numero){
+        if(squadra) {
+            listaArrivatiB[arrivatiB] = numero
+            arrivatiB +=1;
+            if(arrivatiB == numChiamati && corrispondono(listaArrivatiB, listaProf)
+                winner = 1;
+            }
+            if(arrivatiA + arrivatiB == numChiamati*2) wait4endGame.signal();
+            else condB[numero].wait();
+        }
+        else {
+            listaArrivatiA[arrivatiA] = numero
+            arrivatiA +=1;
+            if(arrivatiA == numChiamati && corrispondono(listaArrivatiA, listaProf)){
+                winner = 0;
+            }
+            if(arrivatiA + arrivatiB == numChiamati*2) wait4endGame.signal();
+            else condA[numero].wait();
+        }
+
+
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+sia dato un servizio di message passing asincrono distratto. Questo servizio si comporta come un servizio di message
+passing asincrono ma talvolta dimentica la destinazione. E’ però possibile indicare un processo come “ufficio messaggi smarriti” al
+quale verranno recapitati tutti i messaggi per i quali il servizio distratto ha dimenticato la destinazione.
+    
+    Void dmsgsend(pid_t dest, msg_t msg); //si comporta come amsgsend ma può dimenticare la desticazione
+    
+    msg_t dmsgrecv() //si comporta come amsgrecv(*)
+    
+    void dset_lost_n_found(pid_t pid); //indica il processo per i messaggi smarriti.
+
+Usando il servizio “distratto” e un processo “ufficio messaggi smarriti”, implementare un servizio di message passing standard (senza
+la selezione del mittente in ricezione, la amsgrecv riceve da qualsiasi mittente).
+
+Svolgimento:
+
+    process x:
+        while true:
+            (dest, msg) = dmsgrecv();
+            dmsgsend(dest, (dest,msg));
+
+    amsgsend(pid_t dest, msg_t msg){
+        dset_lost_n_found(x);
+        dmsgsend(dest, (dest,msg));
+    }
+
+    amsgrecv(){
+        (dest, msg) = dmsgrecv();
+        return msg;
+    }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1:
+
+Trovare una stringa di riferimenti infinita (che usi un numero finito di pagine), se esiste, per la quale l’algoritmo LIFO
+(per il quale la pagina vittima è l’ultima caricata) e MIN si comportino esattamente nello stesso modo.
+Trovare una stringa di riferimenti infinita (che usi un numero finito di pagine), se esiste, per la quale l’algoritmo LIFO (per il quale la
+pagina vittima è l’ultima caricata) e LRU si comportino esattamente nello stesso modo. 
+
+Svolgimento:
+
+Consideriamo per entrambe 3 frame in memoria e 4 pagine differenti:
+
+- LIFO E MIN
+    Stringa di riferimenti: 123124123124123124123124123124 ...
+- LIFO E LRU
+    Stringa di riferimenti: 123124123124123124123124123124 ...
+
+    (la stessa stringa dei riferimenti va bene per entrambi)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) Un i-node di un file system tipo ext2 per un errore viene riportato un numero di link maggiore del reale. Cosa può succedere se si
+continua ad usare il file system? (perché?) E se il numero di link errato fosse al contrario inferiore al reale cosa potrebbe succedere?
+(perché?)
+
+    Potrebbe succedere che quando i reali link al i-node verrano eliminati e il numero decrementato questo non raggiungerà mai zero e lo spazio 
+    non verrà rilasciato. 
+    Se invece il numero di link è inferiore al reale può succedere che con solo l'eliminazione di pochi link al inode l'area del file venga 
+    segnata come libera perchè il sistema operativo pensa che l'inode non sia più utilizzato.
+
+b) Perché è necessario usare spinlock in sistemi multiprocessore per implementare kernel di tipo simmetrico (SMP)?
+
+    Perchè la semplice disabilitazione degli interrupt non sarebbe sufficiente in caso di parallelismo reale a prevenire l'accesso 
+    a memoria condivisa in concorrenza. Bisogna perciò utilizzare strumenti come gli spinlock che grazie a istruzioni atomiche, 
+    per esempio la test-and-set, bloccano l'esecuzione di un processo fino al verificarsi di una condizione. 
+    Per evitare il busy wait si possono usare gli spinlock solo per rendere atomiche le istruzioni P e V di un semaforo in modo che la 
+    maggior parte del tempo di attesa per entrare in una sezione critica un processo lo passi in stato di wait invece che consumare 
+    inutilmente cicli di CPU.
+
+c) Perché nei sistemi reali l’algoritmo di rimpiazzamento second chance (orologio) viene preferito a LRU sebbene il primo non sia a
+stack e il secondo sì?
+
+    perchè la gestione dei timestamp richiesti da LRU è costosa e richiede MMU.
+
+d) Perché revocare un’autorizzazione espressa come capability è più difficile che revocare lo stesso diritto quando espresso come
+access control list?
+
+    Perchè le capability sono salvate al interno dello spazio di memoria di ciascun processo mentre le access control list sono legate al file.

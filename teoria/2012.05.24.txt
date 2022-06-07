@@ -1,0 +1,195 @@
+Esercizio c.1: 
+
+Esercizio 1: Un santuario in Nepal e' alla fine di un ponte di corda. Il ponte e' l'unico modo per andare o
+tornare dal santuario. Sul ponte possono stare al massimo MAXPONTE persone e tutte devono procedere nello stesso
+senso.
+Il santuario contiene al massimo MAXSANTUARIO persone.
+
+I fedeli sono infiniti e seguono il seguente algoritmo:
+
+    #define ANDATA 0
+    #define RITORNO 1
+    fedele: process [1..infinito]
+        santuario.entraponte(ANDATA)
+        ... attraversa il ponte ...
+        santuario.esciponte(ANDATA)
+        ... medita ...
+        santuario.entraponte(RITORNO)
+        ... attraversa il ponte ...
+        santuario.esciponte(RITORNO)
+
+Scrivere il monitor santuario con l'avvertenza non solo di seguire le specifiche ma di risolvere eventuali 
+problemi di deadlock e starvation qualora ve ne fossero. (indicare nel caso quali siano e come sono 
+stati risolti).
+
+Svolgimento:
+
+monitor santuario{
+
+    int MAXPONTE
+    int MAXSANTUARIO
+    int currentDir;
+    int currentPonte, currentSantuario;
+    //le condizioni enter e exit sono riferite ad entrare/uscire dal santuario, non dal ponte.
+    condition ok2enter[2], ok2exit[2];          //0: andata, 1: ritorno;
+    int went[2], wext[2];
+
+    procedure entry void init(int maxponte, int maxsantuario){
+        MAXPONTE = maxponte;
+        MAXSANTUARIO = maxsantuario;
+        currentDir = 0;                 //si inizia entrando nel santuario.
+        currentPonte = 0;
+        currentSantuario = 0;
+        went = [0,0];
+        wext = [0,0];
+    }
+
+
+    procedure entry void entraponte(int direzione){
+        if(direzione == 1){                                                         //STA USCENDO DAL SANTUARIO
+            if(currentDir != direzione || currentPonte == MAXPONTE){
+                wext[direzione]++;
+                ok2exit.wait();
+                wext[direzione]--;
+                currentSantuario--;
+            }
+        }else{                                                                      //STA ENTRANDO NEL SANTUARIO
+            if(currentDir != direzione || currentPonte + currentSantuario == MAXSANTUARIO || currentPonte == MAXPONTE){
+                went[direzione]++;
+                ok2enter.wait();
+                went[direzione]--;
+            }
+        }
+        currentPonte++;
+    }
+
+    procedure entry void esciponte(int direzione){
+        currentPonte--;
+        if(direzione == 0){
+            currentSantuario++;
+            if ( went[direzione] > 0){
+                if(currentPonte + currentSantuario < MAXSANTUARIO){
+                    ok2enter.signal();
+                }else currentDir = 1-currentDir;
+            }else{ //nessuno aspetta di entrare nel ponte che porta al santuario
+                if(wext[1-direzione] > 0){  //se c'è qualcuno che vuole uscire cambiamo direzione
+                    currentDir = 1-currentDir;
+                }
+            }
+        }else{
+            if(wext[direzione] > 0){
+                ok2exit.signal();
+            }else{
+                if(went[1-direzione] > 0){  //se c'è qualcuno che vuole entrare cambiamo direzione
+                    currentDir = 1-currentDir;
+                }
+            }
+        }
+        if(currentPonte == 0){
+            if(direzione) ok2exit.signal();
+            else ok2enter.signal();
+        } 
+    }
+}
+
+
+possibilità di starvation: nel caso in cui il santuario non arrivasse a riempimento e non 
+arrivassero altri fedeli. in quel caso tutti quelli all'interno del santuario che volevano uscire 
+sarebbero rimasti li.
+
+Possibilità di deadlock: ?
+
+Da rivedere utilità della doppia dimensione di went e wext.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2: 
+
+Implementare usando le asend() e areceive() le seguenti primitive di comunicazione:
+
+    s2send(m,dest1,dest2); 
+    Invia il messaggio m sia a dest1 sia a dest2.
+    
+    m = s2receive(sender); 
+    Riceve un messaggio in maniera sincrona.
+
+il mittente e i due destinatari devono riattivarsi solo quando entrambi hanno ricevuto il messaggio.
+
+    s2send(m,dest1,dest2){
+        asend((getpid(),m), dest1);
+        asend((getpid(),m), dest2);
+        arecv(dest1);
+        arecv(dest2);
+        asend((getpid(),TAG), dest1);
+        asend((getpid(),TAG), dest2);
+    }
+
+    s2receive(sender){
+        queue othermessages;
+
+        (sender,message) = arecv();
+        asend(ack, sender);
+
+        (sender1,message1) = arecv();
+        while(sender1 != sender || message1 != TAG ){
+            othermessages.enqueue((sender1,message1))
+            (sender1,message1) = arecv();
+        }
+        while(!othermessages.isEmpty()){
+            (s,m) = othermessages.dequeue();;
+            asend((s,m),getPid());
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Si consideri il seguente frammento di FAT:
+    … FAT[30]=16; FAT[31]=35; FAT[32]=33; FAT[33]=34; FAT[34]=36; FAT[35]=40;
+    FAT[36]=37; FAT[37]=39; FAT[38]=29; FAT[39]=30; FAT[40]=39; ….
+
+e di directory dir: 
+    nome file - primo blocco - ultimo blocco
+    file1: primo blocco=32; ultimo blocco 16
+    file2: primo blocco=31; ultimo blocco 37
+
+a) Nell'ipotesi che i blocchi abbiano dimensione 1KiB (1024 byte), dire in quali blocchi fisici sono memorizzati 
+seguenti byte di file1 e file2 della directory dir:
+    i- byte 1025 di file1
+    ii- byte 2048 di file2
+    iii- byte 2047 di file2
+    iv- byte 12239 di file1
+
+nota si tratta dell'iesimo byte, quindi si parte da 1
+
+i- memorizzato nel blocco 33
+ii- memorizzato nel blocco 35
+iii- memorizzato nel blocco 35
+iv- 1:1024,2:2048,4:4096,8:8192,12:12288 -> 12esimo blocco della fila
+    -> 32,33,34,36,37,39,30,16  dovrebbe essere finito, non esiste questo byte...?
+
+
+b) La FAT così rapprentata è coerente? Se sì, spiegare perchè. Se no, spiegare come potrebbe essere 
+resa coerente.
+
+    Non è coerente in quanto il blocco finale non dovrebbe contenere il blocco successivo (vedi blocco 37)
+    inoltre dopo pochi blocchi il file 2 si collega al file 1, che sappiamo finirà al blocco 16,
+    mentre il file 2 dovrebbe finire a 37.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+In un sistema multitasking un processo chiede una operazione di I/O (ad esempio una lettura di un
+dato da disco tramite la chiamata posix “read”). Raccontare con il maggior numero di particolari possibili la sequenza
+di azioni compiute dal sistema operativo e dall'hardware fino al completamento dell'operazione di I/O.
+
+-Il processo effettua la read
+-ne viene eseguito il codice e verrà richiesto il componente hardware necessario
+-se questo è libero il processo ne prende la mutua esclusione e prosegue, altrimenti dovrà aspettare che si liberi
+-una volta che il processo ha preso possesso del dispositivo quest'ultimo inizierà l'elaborazione,
+ mentre il processo resterà in stato di attesa
+-alla fine dell'operazione di I/O verrà rilasciato un interrupt che ne segnalerà il termine e 
+ risveglierà il processo
+-quest'ultimo rilascerà la mutua esclusione sul dispositivo e verrà messo nella ready queue.
+-il continuo dipende dallo scheduler utilizzato e da quanti altri processi sono attivi.

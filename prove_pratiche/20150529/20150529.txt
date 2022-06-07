@@ -1,0 +1,33 @@
+Esercizio 1: Linguaggio C (obbligatorio): (20 punti)
+Scrivere un programma catsig che copi lo standard input nello standard output (come il comando cat senza
+parametri, per intenderci) e che stampi la scritta “ho ricevuto un segnale” quando riceve un segnale SIGUSR1.
+La particolarita' di questo programma e' che per la gestione dei segnali deve usare la chiamata di sistema
+signalfd (e non la signal o la sigaction)
+
+
+
+Esercizio 2: completamento (10 punti)
+Ora, prendendospunto dall'esercizio 1 occorre scrivere due programmi:
+sigsend e sigreceive.
+Sigreceive non ha come parametri. Per prima cosa stampa il suo pid poi entra in un ciclo in cui:
+• aspetta un segnale SIGUSR1
+• stampa su stdout (visualizza) il file con nome /tmp/giroXXXX (dove XXXX e' il proprio pid)
+• cancella il file /tmp/giroXXXX
+• Manda un segnale SIGUSR1 al processo dal quale lo ha ricevuto nella operazione due righe sopra
+questa.
+Sigreceive termina quando riceve in SIGUSR2.
+Sigsend ha come parametro il pid del processo ricevente. Per ogni riga posta in input da stdin fa le seguenti azioni:
+• crea un file /tmp/giroXXXX (dove XXXX e' il pid del processo ricevente), vi scrive la riga letta e lo chiude.
+• Spedisce un segnale SIGUSR1 al ricevente
+• Aspetta dallo stesso un SIGUSR1.
+Quando lo stdin termina (^D da tastiera) manda un SIGUSR2 al ricevente.
+All'attivazione scrive nel file il proprio pid e aspetta un segnale sigusr1.Quando riceve il segnale legge
+Anche in questo esercizio occorre usare solo la signalfd e non la signal o la sigaction.
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Lo script o il programma devono mostrare le righe che compaiono ripetute nei file della directory corrente
+Per ogni riga ripetuta devono essere mostrati: il contenuto della riga, il file dove compare, il numero di linea del file.
+Per “righe ripetute” si intendono righe di testo con lo stesso contenuto dalla prima alla ultima lettera significativa,
+cioe' a meno dell'indentazione iniziale (con spazi o tab).

@@ -1,0 +1,28 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Scrivere un programma che preso come parametro a linea comando il path di una directory elenchi solamente I file
+che hanno un nome che termina con un numero (es. Prova10). I file devono essere ordinati in ordine numerico.
+Esempio se la directory test contiene I file
+prova, giovanni, aaa1000, bb2000, ccc500
+l'output del programma deve essere:
+ccc500
+aaa1000
+bb2000
+(in quanto 500 numericamente e' minore di 1000).
+
+
+
+Esercizio 2: Linguaggio C: 10 punti completamento es 1.
+Come nell'esercizio 1 occorre cercare in una directory (passata come parametro) I file che terminano con un
+numero. Nell'esercizio 2 I file sono eseguibili e l numero indica il numero di millisecondi da attendere a partire dalla
+attivazione del programma prima di attivarli.
+Nell'esempio dell'esercizio precedente occorre aspettare mezzo secondo e lanciare ccc500, poi a 1 secondo
+dall'attivazione (cioe' dopo approssimativamente ulteriori 0.5 secondi) si lancia aaa1000 e allo scadere del secondo
+secondo bbb2000.
+I file eseguibili nella directory vengono eseguiti in background (non si attende la fine dell'esecuzione per
+continuare). Quindi se due file hanno lo stesso prefisso numerico vengono eseguiti in modo concorrente.
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Svolgere l'esercizio 2 in bash o in python (ovviamente scrivendo la logica risolutiva in bash o in python, senza
+eseguire un programma scritto C, per esempio quello dell'esercizio 2)

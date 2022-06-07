@@ -1,0 +1,26 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Usando il servizio inotify(7) scrivere il programma doandelete.
+Questo programma viene attivato con un unico parametro che deve essere una directory vuota
+(controllare la coerenza del parametro!).
+Quando viene aggiunto un file alla directory questo viene eseguito e cancellato.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Si estenda il programma dell'esercizio 1 in modo che se vengono aggiunti molteplici file questi
+vengano eseguiti in modo concorrente.
+
+
+
+Esercizio 3: Python o bash: (10 punti):
+Scrivere uno script bash o un programma python che preso in input il file /usr/include/x86_64-linux-gnu/asm/unistd_64.h 
+crei in output un file .C corretto che contenga la definizione di un array:
+    
+    char *syscall_name[] = {
+        "read",
+        "write",
+        ....
+    }
+
+Il vettore syscall_name deve far corrispondere al numero di ogni system call il suo nome come
+stringa.

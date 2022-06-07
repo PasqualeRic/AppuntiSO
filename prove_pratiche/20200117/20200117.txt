@@ -1,0 +1,30 @@
+Non usare system o popen o simili! Non fare exec di “sh -c”.
+
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti.
+Scrivere un programma searchlink che dati due parametri (nell'ordine un file f ed una directory d)
+metta in output l'elenco dei path all'interno dell'albero che ha radice in d che fanno riferimento ad f
+o come link fisico o come link simbolico.
+es:
+    searchlink myfile mydir
+    link a
+    link d/b
+    symlink e/s
+    significa che dir/a e dir/d/b si riferisono a f come link fisici mentre dir/e/s e' 
+    un link simbolico che punta ad f.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Estendere il programma precedente in modo che accetti le seguenti opzioni:
+-c copia il file originale al posto di tutti i link
+-l trasforma tutti i link in link fisici
+-s trasforma tutti i link in link simbolici
+
+
+
+Esercizio 3: Python o bash: (10 punti)
+Scrivere un programma python o uno script bash che consenta di lanciare parallelamente comandi
+para.py sleep 20 // ls -l // ps // sleep 3   
+ oppure
+para.sh sleep 20 // ls -l // ps // sleep 3
+deve eseguire concorrentemente i vari comandi separati da // e aspettare la terminazione di tutti

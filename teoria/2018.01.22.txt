@@ -1,0 +1,158 @@
+Esercizio c.1: 
+
+L'incrocio fra una strada e un canale è regolato da un ponte mobile come quello illustrato
+dall'apposito segnale.
+Ovviamente le auto possono attraversare il ponte solo se è abbassato e si può alzare il ponte se non ci sono auto
+che lo stanno attraversando. Il ponte deve essere alzato per far passare le imbarcazioni.
+Il canale in corrispondenza del ponte ha una larghezza che consente il passaggio di una imbarcazione alla volta
+(indipendentemente dalla direzione di provenienza) e le imbarcazioni in attesa di attraversare il ponte non
+possono superarsi a vicenda (l'ordine di accesso al canale sotto al ponte è FIFO).
+
+Le auto per attraversare il ponte usano il seguente protocollo:
+
+ bridge.car_enter(direction)
+ ... attraversa il ponte
+ bridge.car_exit(direction)
+
+Le imbarcazioni usano il protocollo:
+
+ bridge.boat_enter(direction)
+ ... passa sotto al ponte
+ bridge.boat_exit(direction)
+
+dove direction vale 0 o 1 per riconoscere le due diverse direzioni delle auto o delle imbarcazioni. Occorre scrivere la soluzione in modo
+da evitare casi di starvation.
+
+Svolgimento: vedi esame 2018.02.12
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Facendo uso di semafori ordinari implementare semafori ternari che possano assumere valori -1, 0, +1.
+L'invariante dei semafori ternari di questo esercizio è:
+ nP - 1 <= nV + init <= nP + 1
+dove nP è il numero di operazioni P completate, nV il numero delle operazioni V completate e init è il valore iniziale del semaforo.
+
+Svolgimento: 
+
+ class trisem: 
+
+    int value;
+    semp = new semaphore(0);
+    semv = new semaphore(0);
+    mutex = new semaphore(1);
+    wp = wv = 0;
+
+    function init(val){
+        value = val
+    }
+
+    function P(){
+        mutex.P()
+        value--;
+        if(value < -1 ){
+            wp++;
+            mutex.V();
+            semp.P();
+            wp--;
+        }
+        if( wv > 0) semv.V();
+        else mutex.V();
+
+    }
+
+    function V(){
+        mutex.P()
+        value++;
+        if(value > 1){
+            wv++;
+            mutex.V();
+            semv.P();
+            wv++;
+        }
+        if(wp > 0) semp.V();
+        else mutex.V();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Considerare i seguenti processi gestiti mediante uno scheduler round robin con timeslice di 4ms su una
+macchina SMP:
+ P1: cpu 5 ms; I-O 4 ms; cpu 2 ms
+ P2: cpu 2 ms; I-O 4 ms; cpu 2 ms
+ P3: cpu 3 ms; I-O 3 ms; cpu 3 ms
+ P4: cpu 10 ms; I-O 1 ms
+l'Input-Output avviene su un'unica unita'. Calcolare il tempo necessario a completare l'esecuzione dei 4 processi al variare del numero
+di processori presenti nel sistema.
+
+Se la macchina è SMP parto da due processori
+
+due processori: 
+
+    cpu:    P1  P1  P1  P1  P4  P4  P4  P4  P3  P3  P3      P4  P4  
+    cpu:    P2  P2  P3  P3  P3  P1  P2  P2  P4  P4  P4  P4  P1  P1    
+    I/O:            P2  P2      P3  P3  P3  P1  P1  P1  P1          P4  
+
+    Tempo: 15ms
+
+tre processori: 
+
+    cpu:    P1  P1  P1  P1  P1      P4  P4  P4  P4  P4  P4    
+    cpu:    P2  P2  P4  P4  P4  P4                      P1  P1
+    cpu:    P3  P3  P3                            
+    I/O:            P2  P2  P3  P3  P3  P1  P1  P1  P1      P4
+
+    Tempo: 13ms
+
+quattro processori:
+
+    cpu:    P1  P1  P1  P1  P4  P4  P4  P4  P4  P4
+    cpu:    P2  P2          P1
+    cpu:    P3  P3  P3                            
+    cpu:    P4  P4  P4  P4
+    I/O:            P2  P2  P3  P3  P3  P1  P1  P1  P1  P4
+
+    Tempo: 12ms ed è facile notare che con un numero di processori >= 4 il tempo di completamento sarà sempre di 12ms
+    (2ms per l'esecuzione di P2 + una coda I/O da 10ms)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) A cosa serve partizionare un disco? Fornire esempi pratici di uso di dischi partizionati.
+
+    Il motivo principale per cui si partiziona un disco è quello di voler adottare file system differenti sulle varie partizioni
+    (inoltre c è un caso particolare, quello della swap pool, in cui partizioniamo il disco senza installarvi sopra un file system)
+    Un esempio pratico può essere dato da un disco su cui sono installati sistemi operativi differenti, ognuno con il suo fs,
+    Oppure un disco che contiene linux e una partizione per lo swap.
+
+b) Quale è la differenza fra TLB miss e page fault nella gestione della memoria virtuale?
+
+    Il TLB si comporta essenzialmente come una memoria cache, ovvero mantiene in una tabella una certa quantità di indirizzi 
+    virtuali e il loro corrispondente indirizzo fisico. Nel momento in cui si ha un TLB miss dobbiamo semplicemente inserire
+    l'indirizzo virtuale e il suo corrispettivo fisico all'interno di questa tabella (eventualmente sostituendo un altro elemento).
+    Nel caso di un page fault abbiamo che l'indirizzo fisico è stato correttamente risolto, ma la pagina a cui questo è associato non è 
+    al momento presente nella memoria principale. Questo vuol dire che sarà necessario inserire in RAM la pagina desiderata eventuamente 
+    sostituendola ad un altra in base alla politica di rimpiazzamento adottata. 
+
+c) Fornire esempi di file system con allocazione contigua, e spiegare perché sarebbe inefficiente usare altri metodi di allocazione nei
+casi d'uso tipici di questi file system.
+
+    Ad esempio in unix si usa una combinazione di allocazione contigua (file più piccoli ove possibile) e indicizzata (file di grandi dimensioni).
+    Quando si parla di allocazione contigua della memoria abbiamo che un file è formato da celle di memoria contigue tra loro.
+    Questo rappresenta un enorme vantaggio dal punto di vista dell'efficienza perchè una volta che si accede al primo blocco, si ha accesso a basso 
+    costo anche agli altri che riguardano lo stesso programma (ogni blocco infatti è collegato al successivo)
+    Mentre ad esempio, se volessimo fare la stessa cosa con altri metodi di alocazione, per ogni accesso al di fuori del blocco che stiamo esaminando, 
+    anche se si tratta dello stesso programma, abbiamo bisogno di scandire nuovamente una tabella (FAT) o un insieme di indici (indicizzata),
+     per poi accedere al blocco interessato. Notiamo come sale di molto il numero di accessi in memoria e in generale diminuisce l'efficienza.  
+
+d) Come funziona la tecnica denominata aging e come riesce ad evitare la starvation negli scheduler a priorità?
+
+    Quella dell'aging è una tecnica utilizzata nello scheduling a priorità che consiste nell'incrementare gradualmente la priorità dei 
+    processi in attesa. In questo modo, posto che il range di variazione delle priorità sia limitato, nessun processo rimarrà in attesa 
+    per un tempo indefinito perché prima o poi raggiungerà la priorità massima.

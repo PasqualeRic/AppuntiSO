@@ -1,0 +1,193 @@
+Esercizio c.1: 
+
+Nel nostro problema ci sono una lavatrice e tanti utenti che desiderano lavare 1kg di biancheria a testa. La lavatrice puo' lavare da 3
+a 5 kg di biancheria.
+Quando la lavatrice e' libera occorrono almeno 3 kg di biancheria per iniziare il ciclo di lavaggio quindi occorre la biancheria di tre utenti. Quando
+il ciclo di lavaggio e' iniziato occorre portarlo a termine (non si puo' aggiungere biancheria).
+Finito il lavaggio gli utenti ritirano la propria biancheria. Quando l'ultimo utente ha preso la propria biancheria, se vi sono almeno tre utenti in
+attesa si inizia un nuovo ciclo di lavaggio altrimenti occorre attendere l'arrivo di almeno tre utenti. Se ci sono tre o quattro utenti si fara' un ciclo di
+lavaggio di 3 o 4 kg, se ve ne sono almeno cinque si fara' un ciclo per 5kg. Se vi sono piu' di 5 utenti i rimanenti attenderanno il prossimo ciclo.
+Scrivere un monitor lavatrice con due metodi enter e exit che regolino secondo le indicazioni appena date. La vita dei processi-utente puo' essere
+rappresentata dal seguente codice:
+
+    process utente[i] {
+        while true {
+            /* sporca biancheria */
+            lavatrice.enter()
+            /* lava biancheria */
+            lavatrice.exit()
+        }
+    }
+
+Svolgimento:
+
+    monitor lavatrice{
+
+        int maxKg = 5;
+        int kg = 0;
+        int copy = 0;
+        bool started = false;
+
+        condition ok2enter;
+
+        entry void enter(){
+            if(kg >= maxkg || started) {
+                waiting++;
+                ok2enter.wait();
+                waiting--;
+            }
+            kg += 1; 
+            toUnlock = 3;
+            if(kg < 3) {
+                if(waiting > 0) ok2enter.signal(); 
+                ok2start.wait(); 
+            }else{
+                if(kg < 5 && waiting > 0){
+                    ok2enter.signal();              //viene messo in urgent stack
+                }
+            }
+            started = true;
+            if(toUnlock > 0){
+                toUnlock--;
+                ok2start.signal();
+            }
+        }
+
+        entry void exit(){
+            kg-=1;
+            if(kg == 0) {
+                started = false;
+                ok2enter.signal();
+            }
+        }
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2:
+
+Shared
+x=1
+y=1
+z=1
+
+semaphore mutex(1);
+semaphore semP(0);
+semaphore semQ(0);
+semaphore semR(0);
+semaphore semS(0);
+
+Process P {
+    while(1) {
+        semP.P()
+        x = x+1;
+        semQ.V()
+    }
+}
+
+Process Q {
+    while(1) {
+        semP.Q()
+        x = x+1;
+        semR.V()
+    }
+}
+
+Process R {
+    while(1) {
+        semR.P();
+        y = y+x;
+        semS.V();
+    }
+}
+
+Process S {
+ while(1) {
+    mutex.P()
+    if (z==y) {
+        print(z)
+        z=0;
+        semP.V();
+        semS.P();
+    } else z=z+1;
+    mutex.V();
+    
+ }
+}
+
+Questo programma composto da 4 processi concorrenti e' soggetto a race condition.
+Utilizzando alcuni semafori e inserendo nel codice solamente operazioni P e V su tali semafori e' possibile eliminare le race condition e fare in
+modo che l'unico output possibile sia la sequenza di tutti i quadrati dei numeri naturali: 1, 4, 9, 16, 25 etc.
+Mostrare il programma modificato per ottenere questo risultato. (si ricorda che il quadrato di n e' anche la somma dei primi n numeri dispari).
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1: Si consideri il seguente scenario per un banchiere multivaluta.
+
+    (a) E' uno stato safe? Spiegate le motivazioni della vostra risposta.
+    (b) In caso positivo, mostrate una richiesta di allocazione che porterebbe il sistema in uno stato unsafe. In caso negativo, illustrate 
+        una richiesta di deallocazione che porterebbe il sistema in uno stato safe.
+ 
+    Valuta 1                            Valuta 2
+    
+    COH = 5                             COH = 25 Ci
+    
+       Ci      Pi      Ni               Ci      Pi         Ni
+       Max  Corr.   Residuo            Max      Corr.   Residuo
+p1:     15   5      10                  30       5           25
+p2:     12   6      6                   100      65          35
+p3:     10   6      4                   50       15          35
+p4:     7    2      2                   20       10          10
+p5:     3    1      1                   70       35          35
+
+Svolgimento:
+
+a)
+
+P1: (15,30)         richiede: (5,5)             restano:(10,25)
+P2: (12,100)        richiede: (6,65)            restano:(6,35)
+P3: (10,50)         richiede: (6,15)            restano:(4,35)
+P4: (7,20)          richiede: (2,10)            restano:(2,10)
+P5: (3,70)          richiede: (1,35)            restano:(1,35)
+
+banchiere: (20,155)       rimane con (5,25)
+
+è uno stato safe, prendiamo ad esempio la combinazione:
+3,4,5,2,1   (25,155) -> (19,140) -> (17,130) -> (16,95) -> (10,30) -> (5,25)
+
+Notiamo che il processo 4 è sbloccabile con le risorse a disposizione.
+Esso rilascerebbe (2,10) arrivando ad un total disponibile di (7,35)
+con cui (ad una richiesta successiva) può essere sbloccato un qualunque processo diverso da p1.
+
+b)
+    se p3 richiedesse (4,0) andando a completare la propria richiesta di valuta 1
+    lo stato diventerebbe unsafe, l'unico processo cui potrebbe essere utile allo sblocco la restante unità della risorsa 1 è P5,
+    ma P5 necessita di 35 unità di R2, che non sono disponibili e non possono essere sbloccate.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.2: 
+Le seguenti affermazioni sono vere o false? (Motivare dettagliatamente le risposte).
+
+1. Il meccanismo RAID livello 0 aumenta la tolleranza ai guasti.
+
+    falso, con raid 0 non abbimo alcun meccanismo di ridondanza/protezione
+
+2. I microkernel consentono maggiori performance rispetto ai kernel monolitici
+
+    falso, il meccanismo di scambio di messaggi tra i processi e il kernel diminuirebbe l'efficienza.
+
+3. L'uso di librerie dinamiche consente una minor occupazione di memoria principale e secondaria.
+
+    parzialmente falso, diminuisce la quantità di memoria secondaria perchè il codice non contiene direttamente la libreria, ma durante 
+    l'esecuzione, quando questa servirà dovrà comunque essere portata in memoria centrale, quindi lo spazio occupato li è lo stesso.
+
+4. Esistono stringhe di riferimenti per le quali LRU e MIN causano lo stesso numero di page fault.
+
+    vero, esempio con 3 frame in memoria: 1,2,3,4,3,2,1.
+    Non solo abbiamo stesso numero di page fault, ma anche lo stesso comportamento.
+
+5. Sia C la capability che consente l'accesso alla risorsa R. Per consentire che C sia memorizzata dal processo che usa R e' necessario che C
+sia crittata mediante un algoritmo a doppia chiave (Pubblica-Privata).
+
+    falso, è sufficiente un algoritmo a chiave simmetrica, purchè questa sia custodita dal server per utilizzarla nel momento in cui la 
+    risorsa è richiesta e verificare la capability.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

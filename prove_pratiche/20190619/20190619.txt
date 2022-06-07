@@ -1,0 +1,35 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Normalmente se un processo è orfano l'exit status viene ricevuto da init o systemd (processo 1).
+Usando l'opzione PR_SET_CHILD_SUBREAPER della system call prctl(2) è possibile cambiare questo
+comportamento.
+Scrivere un programma che crei un processo figlio e uno nipote (tramite fork). Fare in modo che
+termini prima il figlo e poi il nipote.
+Il programma deve mostrare che con prctl/PR_SET_CHILD_SUBREAPER la terminazione del nipote
+viene rilevata dal nonno.
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Tramite l'opzione PR_SET_NAME sempre di prctl fare in modo che con il comando "ps -Leo pid,comm"
+i nomi dei tre rpocessi creati dall'esercizio 1 compaiano con nome "nonno","figlio" e "nipote".
+
+
+
+Esercizio 3: Python o bash: (10 punti):
+Scrivere un programma python o uno script bash che calcoli il numero di righe presenti in tutti i file .c,
+.h, e Makefile (o makefile).
+Prima deve stampare ogni per ogni file .c il numero di righe, poi il totale righe per tutti i file .c,
+similmente per i file .h e i makefile e alla fine il totale generale;
+
+    e.g.
+    primo.c 100
+    secondo.c 150
+    dir/terzo.c 120
+    tot .c 370
+    primo.h 10
+    dir/terzo.h 24
+    tot .h 34
+    Makefile 44
+    dir/makefile 22
+    tot Makefile 66
+    tot source 470

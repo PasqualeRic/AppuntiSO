@@ -1,0 +1,168 @@
+Esercizio c.1: scrivere un monitor nvie che gestisca N buffer limitati. Ogni buffer ha l'ampiezza di NELEM elementi. 
+I produttori chiamano la procedure entry:
+
+    put(int n, generic object)
+
+mentre i consumatori chiamano la procedure entry
+    
+    get(generic *object)
+
+I produttori conferiscono un elemento al buffer indicato come primo parametro. Il secondo parametro e' il valore conferito.
+Per esempio put(3, elem), inserisce un elemento nel buffer numero 3.
+I consumatori ricevono un vettore di oggetti, al massimo uno per buffer. Devono essere presenti elementi da leggere in almeno N/2 buffer perche'
+la chiamata abbia successo (negli elementi relativi a buffer vuoti la chiamata restituisce il valore NONE).
+
+Svolgimento:
+
+monitor nvie{
+
+    int N, NELEM;
+    bufs = new (generic queue) array(N);
+    condition ok2write, ok2read;
+
+    procedure entry void init(n,nelem){
+        N=n;
+        NELEM=nelem;
+    }
+
+    procedure entry void put(int n, generic object){
+        if(n<N){
+            if(bufs[n].length == NELEM) ok2write.wait()
+            bufs[n].enqueue(object);
+            if(hasHalfElements()) ok2read.signal();
+        }
+    }
+
+    procedure entry generic *get (generic *object){
+        if(!hasHalfElements()) ok2read.wait();
+        toReturn = new generic array(NELEM);
+        for (int i=0; i<N; i++){
+            generic elem = none;
+            if(bufs[i].length > 0) elem = bufs[i].dequeue();
+            toReturn[i] = elem;
+        }
+        ok2write.signal();
+        return toReturn;
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    shared val = 0;
+    shared Semaphore sp = new Semaphore(1);
+    shared Semaphore sq = new Semaphore(2);
+    shared Semaphore mutex = new Semaphore(1);
+   
+    process P {
+        int kp = 2;
+        while (kp > 0) {
+            sp.P();
+            mutex.P();
+            val = val+1;
+            sq.V();
+            mutex.V();
+            kp--;
+        }
+    }
+
+    process Q {
+        int kq = 3;
+        while (kq > 0) {
+            sq.P();
+            mutex.P();
+            val = val*2;
+            sp.V();
+            mutex.V();
+            kq--;
+        }
+    }
+
+a) Al termine di questo programma, quali sono i valori possibili della variabile condivisa val?
+b) E' possibile che i processi P o Q restino bloccati indefinitamente?
+
+a)
+
+casi possibili:
+
+    P Q P Q Q
+        value = ((((0 + 1)*2)+1)*2)*2) = 12
+    P Q Q P Q
+        value = ((((0 + 1)*2)*2)+1)*2) = 10
+    Q Q P Q P
+        value = ((((0 * 2)*2)+1)*2)+1) = 3
+    Q P Q Q P
+        value = ((((0 * 2)+1)*2)*2)+1) = 5
+    Q P Q P Q
+        value = ((((0 * 2)+1)*2)+1)*2) = 6
+
+b)
+
+    problema nel momento del passaggio del testimone? (mutex.P in stato di mutex)
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1: Siano dati i processi P1, P2 e P3 in ordine descrescente di priorita' (P1 ha massima priorita' e P3 minima).
+P1: CPU 2ms, I/O 2ms, CPU 2ms, I/O 2ms, CPU 2ms
+P2: CPU 3ms, I/O 2ms, CPU 3ms, I/O 2ms, CPU 3ms
+P3: CPU 1ms, I/O 2ms, CPU 1ms, I/O 2ms, CPU 1ms
+I tre processi usano unita' indipendenti per l'I/O (non c'e' contesa per l'I/O)
+Si calcoli il diagramma di Gannt (descrivendo il procedimento) per uno scheduler a priorita' di tipo preemptive e lo si confronti con uno scheduler a
+priorita' di tipo non preemptive. 
+
+Svolgimento:
+
+non-preemptive
+
+    CPU:    P1  P1  P2  P2  P2  P1  P1  P2  P2  P2  P1  P1  P2  P2  P2  P3          P3          P3
+    I/O:            P1  P1              P1  P1
+    I/O:                        P2  P2              P2  P2
+    I/O:                                                                    P3  P3       P3  P3
+
+preemptive
+
+    CPU:    P1  P1  P2  P2  P1  P1  P2  P3  P1  P1  P2  P2  P2  P3    P2  P2  P2  P3
+    I/O:            P1  P1          P1  P1 
+    I/O:                                P2  P2                  P2  P2 
+    I/O:                                    P3  P3                  P3  P3
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: Si risponda alle seguenti domande:
+a) quali sono le differenze fra la paginazione e la segmentazione nella gestione della memoria?
+
+    Nella paginazione dividiamo la memoria principale in pagine di una dimensione fissata, nel momento in cui un programma alloca memoria 
+    in ram deve chiedere un numero di pagine sufficiente a contenere i dati di cui ha bisogno. Ovviamente il programma non riuscirà a riempire 
+    perfettamente la memoria che gli è stata concessa, andando a generare il fenomeno di frammentazione interna.
+    Nella segmentazione quando un programma deve allocare memoria in ram alloca esattamente la quantità di cui ha bisogno in modo contiguo secondo
+    politica best fit o first fit. La segmentazione riolve il problema della frammentazione interna, ma presenta quello della frammentazione esterna,
+    infatti capita (a meno che non si usano metodi di compattazione(molto costosi)) che nel momento in cui un processo richiede una quantità
+    n di memoria, la ram abbia effettivamente questa quantità di memoria libera, ma questa è sparsa e separata da blocchi allocati da 
+    programmi attualmente in esecuzione, quindi il processo richiedente non può allocare il suo segmento.
+
+b) quali sono le differenze fra le operazioni P e V dei semafori e le operazioni wait/signal delle variabili di condizione?
+
+    P e V seguono un determinao invariante che cambia a seconda dell'implementazione del semaforo che si sta utilizzando.
+    wait e signal servono rispettivamente a mettere in attesa e risvegliare un processo sulla condizione specifica. 
+    Qui l'implementazione può portare differenze di altro tipo, come il continuo dell'esecuzione dopo aver effettuato una signal.
+    wait e signal sono niente di più che P e V ad un livello più alto.
+
+    Signal() non ha alcun effetto se nessun processo sta attendendo la condizione. V memorizza il verificarsi degli eventi. Wait() 
+    e' sempre bloccante. P, se il semaforo ha valore positivo, no. Il processo risvegliato dalla signal viene eseguito per primo.
+
+
+c) allocazione contigua, concatenata e indicizzata nei file system, quali sono le differenze e i campi di applicazione?
+
+    Nell'allocazione contigua ogni file viene allocato in blocchi di memoria adiacenti.
+    PRO: non sono presenti strutture di collegamento, l'accesso sequenziale è efficiente. Anche l'accesso diretto risulta efficiente.
+    CON: frammentazione esterna, politica scelta blocchi liberi da usare; i file non possono crescere
+    APP: e'utilizzato nell'ISO 9660 (dischi ottici) e nel file system NTFS.
+
+    Nell'allocazione concatenata ogni file è una lista concatenata di blocchi ed ogni blocco contiene un puntatore al blocco successivo.
+    PRO: accesso sequenziale o in append mode efficiente, risolve la frammentazione esterna
+    CON: l'accesso diretto è inefficiente, se il blocco è piccolo l'overhead per i puntatori può essere rilevante.
+    APP: utile per i log, dato l'accesso efficiente in append mode. Usata in Xerox alto, DEC TOPS-10
+
+    Nell'allocazione indicizzata l'elenco dei blocchi che compongono un file viene memorizzato in un'area indice, quindi per accedere ad un file 
+    si carica in memoria la sua area indice e si utilizzano i puntatori contenuti.
+    PRO: risolve frammentazione esterna; efficiente per accesso diretto. Il blocco indice viene caricato in memoria solo quando il file è aperto.
+    CON: la dimensinoe del blocco indice determina ampiezza massima file
+    APP: file grosse dimensioni in quanto e' facile accedere alla parte intermedia del file. Utile per i file system di uso generale.

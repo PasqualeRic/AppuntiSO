@@ -1,0 +1,80 @@
+Esercizio 1: 
+
+Il monitor seq da implementare deve fornire due procedure entry:
+    procedure entry void enter(void);
+    procedure entry void exit(void);
+I processi chiamano i servizi di seq come segue:
+    ….
+    seq.enter();
+    /* codice controllato da seq */
+    seq.exit();
+    ….
+Tutti i processi che ne facciano rischiesta possono entrare nel codice controllato da seq 
+contemporaneamente (questa NON e' una sezione critica!). Exit deve garantire che i processi escano dal 
+codice controllato tutti insieme. Per esempio se tre processi a,b e c chiamano seq.enter ogni processo 
+non potra' completare la exit se prima tutti gli altri due non hanno chiamato la exit. Se nel frattempo 
+altri processi dovessero chiamare la seq.enter occorrera' attendere anche questi ultimi.
+
+Svolgimento:
+
+monitor seq{
+
+    contition ok2exit;
+    int numProc = 0;
+
+    procedure entry void enter(void){
+        numProc++;
+    }
+
+    procedure entry void exit(void){
+        numProc--;
+        if(numProc>0)ok2exit.wait();
+        ok2exit.signal();
+    }
+
+}
+con signal urgent questo funziona 100%.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio 2: 
+
+Si considerino le seguenti funzioni atomiche foo e bar e si verifichi se e' possibile usarle (o meno) al
+posto della test&set per il supporto di sezioni critiche (i parametri sono passati per indirizzo):
+2a) foo(x,y) = <x1=y*2, y1=x/2, x=y1, y=x1> (con x, y interi)
+2b) bar(x,y) = <x1=y*2, y1=y/2, x=y1, y=x1> (con x, y interi)
+
+Svolgimento:
+
+foo: x = x/2, y = y*2  non c è correlazione tra le due variabili passate -> non si può
+
+bar: x = y*2, y = y/2 non c'è ciclicità tra le due variabili passate e si rischia di 
+                      generare numeri non memorizzabili -> non si può
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio 3: 
+
+I semafori casual operano come normali semafori ma all'atto di una V se piu' processi sono in attesa, ne
+viene risvegliato uno a caso. Si ponga che nel sistema sia presente anche un contatore atomico. Questo contatore,
+implementato in hardware e' unico in tutto il sistema e gestisce numeri interi a precisione illimitata.
+
+    Atomic very long int globalcounter(void) { 
+        static very long int privateval; 
+        return privateval++ 
+    }
+
+implementare le funzioni Gcsin e Gcsout, prive di argomenti, che consentano di avere un servizio di mutua esclusione
+globale fair (cioe' con la garanzia che i processi entrino nella mutua esclusione uno solo alla volta ma in ordine fifo).
+
+Svolgimento:
+
+void Gcsin(){
+    int val = globalcounter();
+}
+
+void Gcsout(){
+    
+}
+
+non basterebbe una coda di semafori inizializzati a 0?  a che serve il contatore?
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////

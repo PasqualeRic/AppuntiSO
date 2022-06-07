@@ -1,0 +1,169 @@
+Esercizio c.1: 
+
+Scopo di questo esercizio è di scrivere un monitor pairbuf che implementi un buffer illimitato ad
+accoppiamento. Ogni processo che vuole scrivere un elemento nel buffer chiama la funzione di entrata:
+void put(T x)
+mentre ogni processo che vuole leggere un elemento dal buffer chiama la funzione:
+T get(void)
+Gli elementi devono essere consegnati in ordine FIFO. Sia la get sia la put sono bloccanti. Solo quando il numero degli
+scrittori che hanno chiamato la put è uguale a quello dei lettori che hanno chiamato la get tutti i processi in attesa
+vengono sbloccati.
+Quindi per esempio, se un solo scrittore ha chiamato la put, quando arriva un lettore entrambi vengono sbloccati, e il
+lettore riceverà il valore passato come parametro dallo scrittore. Se vi fossero 10 lettori in attesa occorrono 10 scrittori
+perche' i 20 processi continuino l'esecuzione. Chi ha chiamato la get per primo riceverà il dato passato dal primo
+chiamante della put e così via in ordine FIFO.
+
+Svolgimento:
+
+monitor pairbuf{
+    condition wait4writers;
+    condition wait4readers;
+    queue q;
+    int value = 0;
+
+    entry void put(T x){
+        value++;
+        q.enqueue(x)
+        if(value != 0){
+            wait4readers.wait();
+        }
+        wait4writers.signal();
+    }
+
+    entry T get(){
+        value--;
+        if(value != 0){
+            wait4writers.wait();
+        }
+        elem = q.dequeue()
+        wait4readers.signal();
+        return elem;
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+fun dilemma(x):
+ asend((getpid(), x, ""), serverproc)
+ return arecv(serverproc)
+
+
+serverproc: process
+ while True:
+ (pid, x, y) = arecv(None)
+ if x == "":
+ asend(y, pid)
+ else
+ asend((pid, x[1:], y + x[0]), getpid())
+
+
+Cosa calcola la funzione dilemma tramite il processo serverproc? Descrivere come avviene il calcolo.
+Se più processi chiamano la funzione dilemma in concorrenza il calcolo avviene in modo corretto? Perché?
+Note: asend/arecv sono le primitive di un sistema di message passing asincrono. La funzione asend ha due parametri: il
+messaggio da inviare e l'identità del processo destinatario. Il parametro della funzione arecv indica il mittente atteso,
+None indica che vengono accettati messaggi da ogni mittente. La funzione getpid restituisce l'identità del processo
+chiamante.
+
+Svolgimento:
+
+punto 1:
+
+se il messaggio x in input è una stringa vuota, viene restituita una stringa vuota,
+altrimenti il processo server funge da funzione ricorsiva, in particolare ad ogni iterazione viene concatenatauna lettera dell'input all'output e alla afine viene restituito
+in sintesi viene restituita la stessa stringa in input.
+
+punto 2:
+
+non essendoci variabili o risorse condivise, una esecuzione concorrente tra più processi che chiamano la funzione dilemma non causerebbe alcun errore nei calcoli. 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia dato l'algoritmo di rimpiazzamento MINREF che sceglie come pagina vittima quella che compare
+meno volte nella stringa dei riferimenti dall'inizio dell'esecuzione.
+1a) mostrare una sequenza infinita nella quale MINREF si comporti come MIN. Mostrare come è stata costruita la
+sequenza.
+1b) mostrare una sequenza infinita nella quale MINREF si comporti come FIFO. Mostrare come è stata costruita la
+sequenza.
+(NB le sequenze infinite devono generare infiniti page fault).
+
+Svolgimento:
+
+Per svolgere questo esercizio è stato scelto un numero di frame in memoria pari a 3.
+
+presa una sequenza casuale in mod 5 mostriamo il funzionamento di MINREF 
+nota: in questa implementazione, a parità di presenze viene scelto l'elemento da eliminare con politica FIFO
+
+stringa dei riferimenti: 1,3,5,2,4,1,2,3
+
+frame 1:    1   1   1   2   2   2   2
+frame 2:        3   3   3   4   4   3   ....
+frame 3:            5   5   5   1   1   
+
+1a)
+
+Per far si che MINREF si comporti come MIN (pagina che verrà acceduta nel futuro più lontano) la sequenza deve essere di questo tipo:
+- 1,2,3,4,5,4,3,2,1,2,3.....
+
+MINREF = MIN:
+
+frame 1:    1   1   1   4   4 
+frame 2:        2   2   2   5   ....
+frame 3:            3   3   3  
+
+1b)
+
+Per far si che MINREF si comporti come FIFO la sequenza deve essere di questo tipo:
+- 
+
+MINREF = FIFO: 1,2,3,4,5,1,2,3,4,5,1,2,3,4,5.....
+
+frame 1:    1   1   1   4   4 
+frame 2:        2   2   2   5  ....
+frame 3:            3   3   3    
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+rispondere alle seguenti domande:
+
+
+a) Perché una system call non può essere implementata come una normale chiamata di funzione ad un indirizzo del
+kernel?
+
+system call non può essere implementata come una normale chiamata di funzione ad un indirizzo del
+kernel poichè altrimenti si andrebbe contro la distinzione fondamentale tra modalità utente e modalità kernel.
+Diretta conseguenza di questo sarebbe un enorme falla di sicurezza all'interno del nostro sistema operativo, 
+che diventerebbe facilmente manipolabile da qualunque programma utente (annessi malware).  
+
+
+b) Il calcolo del working set dipende dall'algoritmo di rimpiazzamento utilizzato? Perché?
+
+No, il calcolo del working set dipende strettamente dai processi che sono attivi in un determinato momento e di conseguenza dal numero di
+frame di cui questi hanno bisogno per procedere con l'esecuzione.
+In particolare Ad ogni processo Pi viene assegnato un numero di frame sufficiente a mantenere in memoria il suo working set basandosi sul 
+numero di pagine richieste nell'intervalo di tempo precedente (bisogna fare attenzione a non scegliere un numero troppo piccolo o si avrebbe trashing,
+ne un numero troppo grande o si avrebbero falsi positivi di trashing)
+
+c) Discutere la scelta di usare un file system FAT per una partizione contenente file soggetti a frequenti aggiornamenti
+e variazione di dimensione. E' una scelta appropriata o no? perché?
+
+L'utilizzo di FAT rispetto ad altri file system porta sicuramente dei vantaggi a questo sistema. 
+Infatti è possibile istanziare file dalla dimensione variabile e l'accesso può diventare più efficiente nel momento in cui i file vengon consultati spesso, in quanto i 
+blocchi fat vengono salvati in cache.
+Ci sono anche degli svantaggi che porterebb l'utilizzo di questo FS, ad esempio il fatto che bisogna effettuare manutenzioni e scansioni alla tabella FAT,  e che quest 
+ultima occupa uno spazio a se in memoria. 
+
+d) Quando viene richiamato l'algoritmo del Banchiere e cosa succede se il risultato dell'algoritmo mostra che lo stato non è safe?
+
+L'algoritmo del banchiere viene chiamato nel momento in cui un processo fa richiesta di parte di una determinata risorsa e serve a verificare 
+che concedendo questa risorsa il sistema non rischi di andare in stallo. Se l'esecuzione dell'algoritmo mostra che lo stato non sarebbe safe, la risorsa non può 
+essere data al processo richiedente fino a che non ne verranno liberate altre.
+Se la valutazione dell'algoritmo è stata fatta dopo aver consentito l'accesso a determinate risorse e ne consegue che lo stato è unsafe, ci troviamo davanti 
+ad una situazione di potenziale deadlock. Notiamo però che lo stato unsafe è una condizione necessaria, ma non sufficiente per avere deadlock. 

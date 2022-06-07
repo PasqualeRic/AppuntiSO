@@ -1,0 +1,23 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Lo scopo di questo esercizioè di scrivere msleep. msleep si comporta come sleep(1) ma invece di attendere il
+numero di secondi indicati come parametro deve aspettare il numero di millisecondi indicati come parametro.d
+    es:
+    msleep 2340
+completa la sua esecuzione in 2340 millisecondi alias 2.34 secondi.
+La msleep deve essere implementata usando i timerfd (v. timerfd_create(2)).
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Estendere la soluione dell'esercizio 1: mmsleep (multimsleep) ammette molteplici parametri.
+msleep 1234 3456 2345
+allo scadere di 1234 millisecondi stampa 1234, allo scadere di 2345 millisecondi stampa 2345 e infine a 3456
+millisecondi dalla attivazione stampa 3456 ed esce.
+Questo programma deve essere implementato creando un timerfd per ogni parametro e usando poll(2) per
+aspettare il prossimo evento.
+
+
+
+Esercizio 3: Python: (10 punti):
+Scrivere una shell minimale in Python usando la subprocess.run con parametro shell=False.
+La shell deve eseguire comandi con o senza parametri e terminare con logout o fine del file di input (^D).

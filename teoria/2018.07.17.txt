@@ -1,0 +1,207 @@
+Esercizio c.1:
+
+A Bruxelles c'è un locale chiamato Delirium Café. Alla vigilia del FOSDEM tutti gli anni gli sviluppatori europei di
+software libero si ritrovano a bere birra (il locale è nel guinnes dei primati con più di duemila tipi di birra). Il prossimo appuntamento è
+fissato per il 1 febbraio 2019 ore 20. Numerosi sono i tipi di birra alla spina. I baristi (tanti) prendono gli ordini (es. mezza pinta, 1 o 2
+pinte) e riempiono i bicchieri. Quando un fusto e' vuoto avvertono i magazzinieri che prendono un nuovo fusto che contiene più di
+cento pinte e lo sostituiscono, a questo punto il barista può completare il riempimento del bicchiere.
+
+La vita di un barista del Delirium è:
+ 
+ while True:
+    (type, quantity) = get_order()
+    delirium.pour(type, quantity)
+
+La vita di un Magazziniere è:
+ 
+ while True:
+    type = delirium.isempty()
+    capacity = change_keg(type)
+    delirium.loaded(type, capacity)
+
+Attenzione: se il fusto (keg) è quasi vuoto il barista dovrà riempire parzialmente il bicchiere, occorrerà attivare il magazziniere che
+cambierà il fusto e poi il barista riempirà il bicchiere fino alla quantità richiesta dal cliente. Mentre un barista sta attendendo il
+cambiamento di un fusto altri baristi potrebbero ricevere ordini per lo stesso tipo di birra: gestire opportunamente questo caso.
+Scrivere il monitor Delirium.
+
+Svolgimento:
+
+monitor delirium{
+
+    struct conds{
+        condition aspettaMagazziniere;
+        condition aspettaEControlla;
+    }
+
+    struct infos{
+        int capacity;
+        bool isRefilling;
+    }
+
+    queue emptykegs
+    condition waitToRefill
+    arraykeg = new array of infos                    //dove array[type].capacity = quantità disponibile della birra type e array[type].isRefilling è per un controllo che si rende necessario nel caso in cui un fusto sia inizializzato come vuoto
+    arraycond = new array of conds  
+
+    entry void init(types, capacities){
+        int i = 0;
+        for (type of types){
+            arraykeg[type].isRefilling = false;
+            arraykeg[type].capacity = capacities[i]; 
+            i++;
+        }
+    }
+
+    entry type isEmpty(){
+        if(emptykegs.isEmpty()) waitToRefill.wait()
+        return emptykegs.dequeue();
+    }
+    
+    entry void loaded(type, capacity){
+        arraykeg[type].capacity = capacity;
+        arraycond[type].aspettaMagazziniere.signal();
+    }
+
+    entry void pour(type, quantity){
+        int toRemove = quantity;
+
+        if(arraykeg[type].capacity == 0){             //potrebbe esserci qualcuno che sta esaudendo la richiesta
+            if(arraykeg[type].isRefilling){
+                arraycond[type].aspettaEControlla.wait(); 
+            }else{                                    //caso limite in cui la capacità del fusto è stata inizializzata a 0 e qualcuno ne ha fatto richiesta
+                emptykegs.enqueue(type);
+                arraykeg[type].isRefilling = true;
+                waitToRefill.signal();
+                arraycond[type].aspettaMagazziniere.wait();
+                arraykeg[type].isRefilling = false;
+            } 
+        }
+
+        if (arraykeg[type].capacity <= quantity ){
+            toInsert = quantity - arraykeg[type];
+            arraykeg[type] = 0;
+            emptykegs.enqueue(type);
+            arraykeg[type].isRefilling = true;
+            waitToRefill.signal()
+            arraycond[type].aspettaMagazziniere.wait();
+            arraykeg[type].isRefilling = false;
+        }
+
+        arraykeg[type].capacity -= toRemove;
+        arraycond[type].aspettaEControlla.signal();
+    }
+
+    Nota: ci aspettiamo che non venga chiesto un numero di birre tale che dopo aver effettuato la sostituzione del fusto la quantità 
+    disponibile non sia comunque sufficiente.
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Facendo uso di semafori, scrivere il codice di un servizio di buffer illimitato LIFO (con molteplici produttori e consumatori)
+
+ producer: process[1,...,N] 
+    while True: 
+        value = produce() 
+        lifobuf.push(value) 
+
+ consumer: process[1,...,M]
+    while True:
+        value = lifobuf.pop()
+        process(value)
+
+Svolgimento:
+
+    class lifobuf{
+
+        stack s;
+        wc = 0;
+        semaphore mutex = new binary semaphore(1);
+        semaphore sem = new binary semaphore(0);
+
+        void push(value){
+            mutex.P()
+            s.push(value)
+            if (wc > 0) sem.V();
+            else mutex.V();
+        }
+
+        int pop(){
+            mutex.P();
+            if(s.isEmpty()){
+                wc++
+                mutex.V()
+                sem.P();
+                wc--;
+            }
+            value = s.pop();
+            mutex.V();
+            return value;
+        }
+    }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia dato il seguente diagramma di Gannt di uno scheduler:
+indicare le caratteristiche del sistema che si possono individuare dal diagramma, il tipo di scheduler utilizzato e mostrare la sequenza
+delle richieste dei processi. Ogni risposta deve essere opportunamente motivata.
+
+Svolgimento:
+
+Innanzitutto possiamo notare che ci troviamo davanti ad un sistema multiprocessore, con 2 CPU e un dispositivo di I/O
+Molto probabilmente lo scheduler è RR, lo si nota dal fatto che A cede il posto a D per poi riprendere qualche ms dopo senza 
+che si siano risvegliati processi o senza che A passasse ad un operazione di I/O (in sintesi A aveva finito il time slice).
+(inoltre possiamo notare come il primo cpu burst di A abbia la massima lunghezza tra i cpu burst).
+-> abbiamo capito che è un scheduler RR con timeslice di 3ms.
+
+Inoltre con questa informazione sono facilmente ricavabili le seguenti informazioni:
+A: 5ms di elaborazione, 4ms per soddisfare l'operazione di I/O, 2ms di elaborazione.
+B: 2ms di elaborazione, 4ms per soddisfare l'operazione di I/O, 2ms di elaborazione.
+C: 3ms di elaborazione, 3ms per soddisfare l'operazione di I/O, 3ms di elaborazione.
+D: 10ms di elaborazione, 1ms per soddisfare l'operazione di I/O, 1ms di elaborazione.
+
+Il device di I/O è gestito con politica FIFO.
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) In quali casi è bene non usare la memoria virtuale?
+
+    In sistemi che non supportano la multiprogrammazione (es. arduino) la memoria virtuale riulterebbe solamente un peso per le prestazioni
+    i suoi benefici sarebbero inoltre limitati vista la presenza di un unico programma per volta. Inoltre anche in tutti quei sistemi di cui
+    conosciamo i processi che devono essere eseguiti (possiamo quindi allocare la memoria in maniera più semplice in quanto 
+    abbiamo tutte le informazioni necessarie).
+
+b) Perché il file system FAT viene ancora utilizzato?
+
+    Il file system FAT viene ancora utilizzato per la sua semplicità, la possibilità di avere un accesso diretto efficente e una 
+    compatibilità tra diversi sistemi
+
+c) A cosa serve gestire batterie di dischi con metodologia RAID? E’ necessario fare backup dei dati memorizzati in RAID?
+
+    RAID porta numerosi vantaggi sia in efficienza che in sicurezza. Infatti a seconda del tipo di raid utilizzato ci sono meccanismi
+    che aumentano la velocità di lettura dai dischi (divisione in stripes) e altri che limitano la possibilità di perdere dati in essi
+    contenuti (parità e mirroring).
+    Visto che l'utilizzo di determinati tipi di RAID aumenta la sicurezza rispetto al normale utilizzo di un disco, creare un backup dei 
+    dati prima di utilizzare raid è abbastanza inutile. (inoltre RAID 1 fa mirroring)
+
+d) Dimostrare che un ciclo in un grafo di Holt multirisorsa non è condizione sufficiente perché ci sia un deadlock.
+
+    prendiamo 3 processi: P1,P2,P3
+
+    P1: richiede A, possiede una risorsa di B
+    P1: richiede B, possiede una risorsa di A
+    P3: richiede C, possiede una risorsa di A,B
+
+    Possiamo notare come P1 -> A -> P2 -> B -> P1 sia un ciclo, ma P3 dopo aver ottenuto C completerà la propria esecuzione in tempo finito
+    liberando una risorsa di A e B e facendo proseguire anche P1 e P2.

@@ -1,0 +1,157 @@
+Esercizio c.1: 
+
+Scrivere il monitor bbwl che fornisca il servizio di bounded buffer with logging. Ci sono tre tipi di processi che
+interagiscono con questo servizio: i produttori, i consumatori e i logger. I produttori, quando hanno generato un elemento lo
+inseriscono nel buffer chiamando la procedure entry:
+ 
+    bbwl.write(eltype elem)
+
+e quando i consumatori possono elaborare un ulteriore elemento chiamano la funzione (entry):
+    
+    eltype bbwl.read()
+
+il buffer ha una capacita' massima limitata a MAXELEM elementi.
+I processi logger chiamano la funzione:
+    
+    eltype bbwl.log()
+
+per poter registrare una traccia dei pacchetti transitati nel buffer. I pacchetti devono essere sempre tracciati (forniti a un logger) prima
+di poter essere ricevuti da un consumatore e i pacchetti devono essere forniti ai processi logger e ai processi consumatori in ordine
+FIFO (nell'ordine col quale i processi produttori li hanno inseriti nel buffer chiamando la funzione write).
+
+Svolgimento:
+
+#define MAXELEM ... 
+
+monitor bbw1{
+
+    condition ok2write, ok2log, ok2read;
+
+    eltype queue qToLoggers;
+    eltype queue qToReaders;
+
+    entry void write(eltype elem){
+        if (qToLoggers.length == MAXELEM) ok2write.wait();
+        qToLoggers.enqueue(elem);
+        ok2log.signal();
+    }
+
+    entry eltype read(){
+        if (qToReaders.length == 0) ok2read.wait();
+        eltype val = qToReaders.dequeue()
+        if(qToLoggers.length < MAXELEM) ok2write.signal();
+        return val;
+    }
+
+    entry eltype log(){
+        if (qToLoggers.length == 0) ok2log.wait();
+        eltype val = qToLoggers.dequeue()
+        qToReaders.enqueue(val);
+        ok2read.signal();
+        return val;
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: Considerare le seguenti funzioni atomiche (le variabili sono passate per indirizzo)
+ 
+    alpha(x,y): <x=4, y=sqrt(x)> NO
+    bravo(x,y): <y=sqrt(x), x=4>  NO
+    charlie(x,y): <y=sqrt(x), x=4*y>  Forse
+    delta(z,t): <z=z xor t, t=z xor t>  Probabile
+
+Quali fra queste funzioni possono essere usate per implementare un servizio di sezioni critiche (in modo simile a quanto visto a
+lezione con la Test&Set)? fornire il codice di una implementazione o una dimostrazione di impossibilita'.
+
+Svolgimento:
+
+1,2)
+Nelle prime due non c è ciclicità tra le due variabili.
+
+3)
+
+charlie(x,y): <y=sqrt(x), x=4*y>
+seppure c'è ciclicità tra i due non riesco a vdere soluzioni.
+
+
+4)
+
+    int t = 0
+    mutex_in(){
+        int z;
+        do{
+            z = 1;
+            delta(t,z)
+        }while(t != 0);
+    }
+
+    mutex_out(){
+        t = 0;
+    }
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia dato l'algoritmo di rimpiazzamento MINNUM. Come pagina da rimpiazzare MINNUM sceglie sempre quella con
+l'indirizzo logico piu' basso (numero di pagina minore).
+a. mostrare una stringa di riferimenti di lunghezza infinita e che generi infiniti page fault tale che MIN e MINNUM si comportino
+esattamente nello stesso modo
+b. mostrare una stringa di riferimenti di lunghezza infinita tale che MINNUM generi un page fault ad ogni accesso in memoria mentre
+MIN generi un numero finito di page fault
+(in entrambi i punti l'insieme delle pagine utilizzate nelle stringhe di riferimenti deve essere finito)
+
+Svolgimento:
+
+a)
+    Stringa dei riferimenti: 1,2,3,4,3,2,1,3,4,2,3,4,1,3,4,2,3,4,1,3,4,2.... 3,4,2,3,4,1.....        
+    prendiamo 3 frame:
+
+                                MIN: 1  1   1   4   4   4   4   4   4   4   4   4
+                                        2   2   2   2   2   1   1   1   2   2   2   1
+                                            3   3   3   3   3   3   3   3   3   3
+b)
+    Stringa dei riferimenti: 1,2,3,4,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1
+        MINNUM: inf page fault.
+        MIN: 2
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle seguenti domande:
+
+1. La paginazione non elimina completamente ne' la frammentazione interna ne' quella esterna ma le rende trascurabili.
+Perche'?
+
+    La paginazione elimina il fenomeno della frammentazione esterna perchè esiste un numero fissato di pagine in memoria dalla dimensione fissa,
+    ciò che invece non viene eliminato  la frammentazione interna, che si presenta quando (maggioranza dei casi) la memoria richiesta da 
+    un programma è diversa da numPagine*dimensionePagina dove dimensionePagina è fissato e numPagine varia a seconda dell'esigenza.
+    Anche se presente, la frammentazione interna è limitata per ogni processo ad uno spazio inferiore alla dimensione di una pagina. 
+
+2. Il file system ext2 e' piu' efficiente nell'accesso diretto a file di piccole dimensioni rispetto a quelli di grandi dimensioni.
+Perche'?
+
+    Perchè l'inode per file di picole dimensioni consente l'accesso diretto, mentre per file di dimensioni pù grandi abbiamo bisogo di 
+    uno spazio di indirizzamento più ampio e vi dobbiamo accedere attraverso accesso indiretto a 2,3 o 4 livelli
+
+
+3. In quali casi l'algoritmo C-Look e' preferibile all'algoritmo Look? Perche'?
+
+    ??
+
+4. Nella memorizzazione delle capability per il controllo di accesso ai file puo' essere usato un algoritmo di crittografia a singola
+chiave (chiave privata). Perche'?
+
+    Si, può essere utilizzata una tenica simile e questo è dovuto a come il meccanismo delle capability è implementato.
+    Sappiamo che ogni processo è in possesso di apposite chiavi di accesso (le capability stesse) che gli vengono assegnate assieme
+    ad un determinato permesso, per poi essere confrontate con una copia custodita dal sistema nel momento in cui se ne ha bisogno.
+    Criptando la capability con una chiave privata (la stessa con cui abbiamo criptato la copia nascosta) abbiamo certezza sia sulla 
+    segretezza della capability che sulla sua integrità.

@@ -1,0 +1,167 @@
+Esercizio c.1: 
+
+Scrivere un monitor dualwriter che realizzi un doppio buffer limitato (ogni buffer ha ampiezza
+BUFSIZE) che consenta a uno scrittore di scrivere contemporaneamente due elementi che andranno rispettivamente
+nel primo e nel secondo buffer. Le letture :
+ 
+    procedure entry void write(type1 e1, type2 e2);
+    procedure entry type1 read1();
+    procedure entry type2 read2();
+
+La funzione write deve attendere che ci sia spazio in entrambi i buffer.
+La funzione read attende che vi sia almeno un elemento nel buffer indicato.
+
+Svolgimento:
+
+monitor dualwriter{
+
+    condition ok2readFirst, ok2readSecond, ok2writeFirst, ok2writeSecond;
+    int teoric_length1 = 0, teoric_length2 = 0;
+    buf1 = new type1 queue;
+    buf2 = new type2 queue;
+
+    procedure entry void write(type1 e1, type2 e2){
+
+        if(teoric_length1 == MAX) ok2writeFirst.wait();
+        teoric_length1++;
+        if(teoric_length2 == MAX) ok2writeSecond.wait();
+        teoric_length2++;
+
+        buf1.enqueue(e1);
+        buf2.enqueue(e2);
+
+        ok2readFirst.signal();
+        ok2readSecond.signal();
+    }
+
+    procedure entry type1 read1(){
+        if(buf1.length == 0) ok2readFirst.wait();
+        type1 elem = buf1.dequeue();
+        teoric_length1--;
+        ok2writeFirst.signal();
+        return elem; 
+    }
+    
+    procedure entry type2 read2(){
+        if(buf2.length == 0) ok2readSecond.wait();
+        type2 elem = buf2.dequeue();
+        teoric_length2--;
+        ok2writeSecond.signal();
+        return elem; 
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Considerare le seguenti funzioni atomiche (le variabili sono passate per indirizzo)
+ 
+    foo(x,y): <x=2+y, y=2+x>
+    bar(z,t): <z=z xor t, t=t xor z, z=z xor t>
+
+Quali fra queste funzioni possono essere usate per implementare un servizio di sezioni critiche (in modo simile a
+quanto visto a lezione con la Test&Set)? 
+
+Svolgimento:
+1)
+    y = -2
+
+    mutex_in()
+        int x;
+        do{
+            x = 0;
+            foo(x,y);               //il primo giro esce 0,2 poi x e y iniziano ad aumentare 
+        }while(x > 0)
+
+    mutex_out()
+        y = -2;
+
+        ATTENZIONE: questa non è una soluzione valida, arriverebbe facilmente a MAXINT
+
+2)  
+    z = 0
+
+    mutex_in()
+        int t;
+        do{
+            t = 1;
+            bar(z,t);               //il primo giro esce 1,0, poi solo 1,1
+        }while(t==1 && z==1)
+
+    mutex_out()
+        z = 0;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+Considerare i seguenti processi gestiti mediante uno scheduler round robin con timeslice di 4ms su una
+macchina SMP a due processori:
+ 
+    P1: cpu 5 ms; I-O 4 ms; cpu 2 ms; I-O 5 ms; cpu 5 ms
+    P2: cpu 2 ms; I-O 4 ms; cpu 2 ms; I-O 1 ms; cpu 5 ms
+    P3: cpu 3 ms; I-O 3 ms; cpu 3 ms; I-O 1 ms; cpu 3 ms
+    P4: cpu 13 ms; I-O 1 ms
+
+l'Input-Output avviene su un'unica unita'
+
+Svolgimento: 
+
+    CPU:  P1  P1  P1  P1  P4  P4  P4  P4  P4  P4  P4  P4  P4  P4  P4  P3  P3  P3  P2  P2  P2  P2  P2  
+    CPU:  P2  P2  P3  P3  P3  P1  P2  P2      P3  P3  P3      P1  P2  P1  P4  P4              P1  P1  P1  P1  P1
+    I/O:          P2  P2  P2  P2  P3  P3  P3  P1  P1  P1  P1  P2  P3      P1  P1  P1  P1  P1  P4
+    
+ RQ:  P1  P3  P3  P4  P4  P1  P2          P3              P1  P2  P3  P4  P2  P2          P1
+      P2  P4  P4                                              P4  P1  P2
+      P3                                                      P1  P4
+      P4                                                          P2 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.2:
+Nel corso abbiamo incontrato concetti che possono apparire simili, o diversi approcci di soluzione per lo stesso
+problema.
+Il candidato scelga due dei tre confronti proposti e indichi per ognuno: in quale ambito dei sistemi operativi si applicano
+i concetti espressi, quali sono i punti in comune e quali le differenze fra gli elementi da confrontare.
+
+• Confrontare la paginazione e la segmentazione di memoria
+
+    Paginazione e segmentazione soo due aspetti che riguardano la gestione della memoria principale.
+    Punti in comune:
+    -Servono entrambi a rendere più efficiente l'uso della memoria principale.
+    Differenze:
+    -La paginazione risolve la frammentazione esterna ma genera quella interna, viceversa per la segmentazione.
+    -La segmentazione offre un meccanismo di sicurezza dato dal fatto che la memoria associata ad un processo è suddivisa 
+     in aree differenti dal punto di vista funzionale e che possono essere di lettura/scrittura.
+    -Nei segmenti la divisione e il dimensionamento spettano al programmatore, nella paginazione sono automatici
+    -Le pagine hanno dimensione fissa, i segmenti variabile.
+    -le pagine possono contenere informazioni disomogenee, mentre i segmenti sono divisi dal punto di vista funzionale.
+    -le pagine vanno per indirizzo, i segmenti vanno per nome.
+
+• Confrontare l'allocazione concatenata e l'allocazione indicizzata per file system
+
+    Allocazione concatenata e indicizzata sono due aspetti che riguardano l'implementazione dei file system.
+    Punti in comune:
+    -risolvono il problema della frammentazione esterna
+    Differenze:
+    -Nell'allocazione concatenata ogni file è una lista concatenata di blocchi ed ogni blocco contiene un puntatore al blocco successivo.
+     Nell'allocazione indicizzata l'elenco dei blocchi che compongono un file viene memorizzato in un'area indice, quindi per accedere ad un file 
+     si carica in memoria la sua area indice e si utilizzano i puntatori contenuti.
+    -l allocazione indicizzata è efficiente per l'accesso diretto, quella concatenata no
+
+• Confrontare microkernel e kernel monolitici
+
+    Kernel monolitici e mikìcrokernel rappresentano due metodi di implementaione dei kernel
+    Punti in comune:
+    -il core del kernel, che consta delle parti più importanti, dovrebbe essere simile.
+    Differenze:
+    -nei microkernel le parti meno essenziali sono implementate come processi a livello utente, mentre nei kernel monolitici 
+     tutto il codice fa parte del kernel
+    -i microkernel sono più facili da realizzare dei monolitici.
+    -i microkernel risultano più espandibili e modificabili (e portabili).
+    -è possibile assegnare al microkernel e ai processi di sistema livelli di sicurezza diversi, nei monolitici abbiamo 
+     semplicemente un livello di protezione sui processi kernel
+    -i kernel monolitici rsultano più efficienti perchè nei microkernel va gestita la comunicazione tra i processi e il kernel
+     (che è mediata dal kernel stesso).
+     
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

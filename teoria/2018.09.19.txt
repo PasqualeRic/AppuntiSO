@@ -1,0 +1,173 @@
+Esercizio c.1:
+
+ Scrivere il monitor di controllo per lo smistamento delle valigie all'aeroporto di Bologna. Un carrello viaggia su un
+binario circolare. Il carrello si ferma ad una postazione dove vengono caricate le valigie e quindi in corrispondenza a più postazioni
+dove vengono scaricate le valigie. Esiste una postazione corrispondente ad ogni aeroporto di destinazione.
+Alla postazione di caricamento un addetto scansiona dal codice a barre l'aeroporto di destinazione e il nome del proprietario della
+valigia.
+Il codice dei processi coinvolti nel problema è il seguente:
+int airport_codes = [BLQ, CDG, BRX, LGW, FCO, ....]
+## l'elemento 0, BLQ (codice di Bologna) corrisponde alla stazione di caricamento
+   
+    cart: process
+        while True:
+            for code in airport_codes:
+                dispatch.cartat(code) # il carrello è alla postazione code
+    
+    loadingstation: process
+        while True:
+            dstcode,owner = read_barcode()
+            dispatch.load(dstcode, owner) #carica la valigia del viaggiatore owner diretto a dstcode
+    
+    station, for dstcode in airport_codes[1:]: process
+        while True:
+            owner = dispatch.unload(dstcode) #scarica dal carrello la valigia dell'utente owner
+            process_luggage(ownder, dstcode)
+
+Condizioni da rispettare: il carrello trasporta MAX valigie, alla stazione di caricamento il carrello si ferma fino al riempimento completo
+del carrello, alle altre stazioni deve sostare fino a quando tutte le valigie per la destinazione sono state scaricate.
+
+Svolgimento: 
+
+Nota imlementativa: 
+
+monitor dispatch{
+
+    int MAX = ...
+    int totalElem = 0;
+    condition goNext;
+    hmCond = new hashmap of condition;                       //una condizione per ogni elemento della hashmap
+    hmElem = new listhashmap of <destCode, owner>;          //ogni elemento è la testa di una lista
+    loading = true;
+    currentCode = airport_codes[0];
+
+    entry void cartat(code){
+        if(loading || hmElem[currentCode].hasElements()) goNext.wait();
+        currentCode = code;
+        hmCond[currentCode].signal();
+    }
+
+    entry void load(destCode, owner){
+        if(totalElem < MAX)
+            elem = (destCode, owner);
+            hmElem[destCode].addElement(elem);
+            totalElem++;
+        else
+            loading = false;
+            goNext.signal();
+    }
+
+    entry owner unload(destCode){
+        if(destCode != currentCode ) hmCond[destCode].wait();
+        elem = hmElem[currentCode].removeElement();
+        if( hmElem[currentCode].hasElements() ) hmCond[destCode].signal();
+        else goNext.signal();
+    }
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Dato un servizio di message passing asincrono, implementare un nuovo servizio di message passing sincrono e LIFO.
+Il ricevente deve svuotare la coda dei messaggi in attesa di essere ricevuti e consegnare al chiamante l'ultimo messaggio arrivato non
+prima però di aver inviato un messaggio di conferma per sbloccare il mittente.
+Nessun messaggio deve essere perduto.
+
+lifosend(dest, msg){
+    asend((sender:getpid(), msg:msg),dest);
+    arecv(dest);
+}
+
+liforecv(){
+    stack s;
+    toReturn = new <sender,msg>
+
+    asend((sender: getPid(),msg:TAG), getPid())
+    recv = arecv(*)
+    while (recv.sender != getPid()){
+        s.push(recv)
+        recv=arecv(*)
+    }
+    if(!s.isEmpty)
+        toReturn = s.pop();
+        asend(ack, toReturn.sender)
+        while (!s.isEmpty){
+            elem = s.pop();
+            asend((sender: elem.sender,msg:elem.msg), getPid())
+        }
+    else toReturn.msg = none;     
+    return toReturn.msg;
+}
+
+si potrebbe tranquillamente usare una variabile al posto dello stack, ma la consegna chiede di non perdere messaggi
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia dato questo programma:
+    Program P:
+        for (i=0;i<2;i++) {
+            long_compute();
+            io();
+        }
+        short_compute();
+
+long compute impiega 5 ms, short compute 2 ms e io impiega 5 ms. Il programma usa un device condiviso gestito in modalità FIFO.
+Considerando in un sistema di elaborazione monorocessore dove sono in esecuzione tre istanze del programma P che sono state
+attivate ai tempi 0, 4ms e 7ms e che il sistema usa uno scheduler round robin per l'accesso alla CPU disegnare il diagramma di Gannt
+dell'esecuzione e spiegarne i passaggi. (time slice=3 ms)
+
+Svolgimento:
+
+Ovviamente consideriamo io() come un operazione di I/O, ed essendo RR preemptive questa operazione altera il flusso esecutivo. 
+Chiamiamo le istanze in ordine di attivazione con P1,P2,P3
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+time:   0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+I/O:                        |        P1          |       |         P2        |        P3         |       |       P2          |       P1          |       P3          |    
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+cpu:    |    P1     |   P1  |     P2    |   P3   |   P2  |    P3    |    P1  | P1|    P2     | P1|  P2   | P1|    P3     | P3| P3|  P2   |       |  P1   |           |   P3  |
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+P1: (3 + 2) + IO + (2 + 1 + 1 + 1) + IO + 2                 OK   
+P2: (3 + 2) + IO + (3 + 2) + IO + 2                         OK
+P3: (2 + 3) + IO + (3 + 1 + 1) + IO + 2                     OK
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+a) perché per realizzare un servizio di memoria virtuale l'algoritmo di rimpiazzamento LRU è difficile da implementare?
+
+    Abbiamo due possibili implementazioni per questo servizio usando LRU, ed entrambe presentando delle problematiche:
+    - il primo modo è utilizzare un apposito hardware, la MMU per tenere conto del timestamp in cui una determinata agina viene acceduta
+      (Implementabile attraverso un contatore degli accessi).
+      A questo bisogna aggiungere dei controlli per un eventuale overflow del contatore stesso e tutte le operazioni di ricerca necessarie ogni
+      qualvolta dobbiamo utilizzare l'algoritmo.
+    - Un altro modo di implementare LRU è attraverso uno stack che contiene in cima l'ultima pagina acceduta 
+      (di conseguenza quella acceduta meno recentemente si troverà sul fondo). 
+      Anche questa implementazione presenta dei problemi, infatti si deve tener conto del costo di utilizzo di uno stack formato da una double
+      linked list.  
+
+b) in quali casi anche utilizzando file system con supporto di journaling si possono perdere informazioni?
+
+    Probabilmente quando le informazioni vengono scritte nel log in ordine errato o sono incomplete.
+    Magari il sistema si guasta, e durante il ripristino in mancanza di informazioni possono esserci perdite di dati ulteriori, 
+    poichè magari alcune operazioni non possono essere svolte senza le informazioni mancanti.
+
+c) perché il servizio di message passing asincrono e quello sincrono non hanno lo stesso potere espressivo?
+
+    Perchè con il message passing asincrono posso implementare quello sincrono, ma non il viceversa.
+
+d) esistono processori che non hanno istruzioni privilegiate (modo kernel/modo user). Quali conseguenze ci sono per i sistemi
+operativi?
+
+    Si, esistono processori che non forniscono protezione hardware per garantire distinzione tra modo kernel e modo user, 
+    basta pensare ai microcontrollori. Spesso questo vuol dire che non c'è un vero e proprio sistema operativo che gira sulla macchina 
+    in questione. Infatti senza questo meccanismo di sicurezza i processi utente possono interferire con il normale funzionamento del sistema e 
+    nel peggiore dei casi danneggiarlo (basta pensare a quanto è importante la protezione fornita dalla MMU nella traduzione degli indirizzi).

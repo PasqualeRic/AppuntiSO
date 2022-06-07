@@ -1,0 +1,205 @@
+Esercizio c.1: 
+
+Nel giorno di sabato in un albergo ad Haifa funziona un solo ascensore in modo automatico. L'ascensore si ferma a
+ogni piano a partire dal piano terra all'ultimo piano e poi inverte la marcia fermandosi ancora ad ogni piano e cosi' torna al piano
+terra. Per tutto il giorno di sabato l'ascensore funziona in questo modo.
+Il programma dell'ascensore e' il seguente.
+
+    up,down=0,1
+    process elevator:
+        while True:
+            for floor in range(0,N):
+                ...chiude le porte, va al piano floor, apre le porte...
+                sabelev.atfloor(floor,up)
+            for floor in range(N,0,-1):
+                ...chiude le porte, va al piano floor, apre le porte...
+                sabelev.atfloor(floor,down)
+
+Gli utenti quindi aspettano l'ascensore, salgono quando arriva l'ascensore che va nella direzione desiderata e scendono al piano dove
+sono diretti. Per usare l'ascensore da un piano gli utenti richiamano questa funzione:
+    
+    def changefloor(from, to):
+        if from != to and 0<=from<N and 0<=to<N:
+            sabelev.enter(from, to)
+            sabelev.exit(from, to)
+
+dove from e' il piano di partenza e to il piano di arrivo. Quando l'ascensore arriva ad un piano non puo' ripartire se non sono scese
+tutte le persone che volevano giungere a quel piano. Per semplicita' assumeremo che la capienza della cabina non sia limitata.
+
+Svolgimento:
+
+monitor sabelev{
+
+    bool isGoingUp;
+    int floor;
+
+    waitAtFloorToGoUP = new condition array(N); 
+    waitAtFloorToGoDown = new condition array(N);
+    waitingAtFloorToGoUP = new int array(N);
+    waitingAtFloorToGoDown = new int array(N);
+
+    exitAtFloor = new condition array(N);
+    exitingAtFloor = new int array(N);
+
+    entry void init(){
+        floor = 0;
+        isGoingUp = true;
+        for(int i =0; i<N; i++) {
+            waitingAtFloorToGoUP[i] = 0;
+            waitingAtFloorToGoDown[i] = 0;
+        }
+    }
+
+    entry void atfloor(floor,upOrDown){
+        
+        while(exitingAtFloor[floor] > 0){
+            exitAtFloor[floor].signal();
+            exitingAtFloor[floor]--;
+        }
+        while(waitingAtFloorToGoUp[floor] > 0 && isGoingUp){
+            waitAtFloorToGoUp[floor].signal();
+            waitingAtFloorToGoUp[floor]--;
+        }
+
+        while(waitingAtFloorToGoDown[floor] > 0 && !isGoingUp){
+            waitAtFloorToGoDown[floor].signal();
+            waitingAtFloorToGoDown[floor]--;
+        }
+
+        if(upOrDown){            //going down
+            isGoingUp = false;
+            floor--;
+        }else{
+            isGoingUp = true;
+            floor++;
+        }
+    }
+
+    entry void enter(from, to){
+        if(to > from){
+            waitingAtFloorToGoUP(from)++;
+            waitAtFloorToGoUP(from).wait();
+            waitingAtFloorToGoUP(from)--;
+        }else{
+            waitingAtFloorToGoDown(from)++;
+            waitAtFloorToGoDown(from).wait();
+            waitingAtFloorToGoDown(from)--;
+        }
+    }
+
+    entry void exit(from, to){    //il controllo per fare in modo che il piando di arrivo sia diverso da quello di destinazione è intrinseco nel processo
+        exitingAtFloor(to)++;
+        exitAtFloor(to).wait();
+        exitingAtFloor(to)--;
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2: 
+
+Siano dati 4 processi:
+
+    prchar=”IATL”
+    Process i: i=range(4)
+        while True:
+            sync(i)
+            print(prchar[i])
+
+Scrivere la funzione sync in modo che in un sistema di processi a memoria privata, usando message passing asincrono, l'unico
+output possibile sia la stringa di lunghezza infinita: “ITALIAITALIAITALIA....”
+
+Svolgimento:
+
+Ordine dei processi: 0 2 1 3 0 1 0 2 1 3 0 1 0 2 1 3 0 1
+
+int i-select = 0;
+
+function sync(i){
+
+    switch(i){
+        case 0:{
+            sender = arecv(*)
+            if(sender == 2){
+                asend(2,getPid());
+                 asend(1,getPid());
+                 asend(2,getPid());
+                 asend(3,getPid());
+            }else if(sender == 3){
+                asend(3,getPid());
+                asend(1,getPid());
+            }
+            break;
+        }
+        case 1:{
+            sender = arecv(*)
+            if(sender == 3){
+                asend(2,getPid());
+                sender = arecv(*);
+            }
+            break;
+        }
+        case 2:{
+            sender = arecv(*)
+            asend(0,getPid());
+            zero = arecv(*);
+            break;
+        }
+        case 3:{
+            asend(1,getPid());
+            sender = arecv(*)
+            asend(0,getPid());
+            zero = arecv(*)
+            break;
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1: 
+
+Costruire un Grafo di Holt con 6 processi e 6 classi di risorse in modo che valgano contemporaneamente le seguenti
+proprieta':
+    – la situazione sia di Deadlock
+    – non sia sufficente eliminare un processo perche' il Deadlock venga risolto
+    – ogni processo abbia esattamente una richiesta in sospeso
+    – il grafo sia connesso (ci sono archi fra nodi di partizioni diverse comunque si partizioni l'insieme dei nodi)
+
+Svolgimento:
+
+Processi: P1,P2,P3,P4,P5,P6
+Classi di risorse: R1,R2,R3,R4,R5,R6
+
+P1 ha: R3 vuole: R1 
+P2 ha: R1 vuole: R2
+P3 ha: R2,R3 vuole: R3 
+P4 ha: R4 vuole: R5 
+P5 ha: R5 vuole: R6 
+P6 ha: R6 vuole: R5 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.2: 
+
+Rispondere alle seguenti domande:
+1. Quali sono le differenze fra un device driver di una unita' con funzionalita' di DMA e quello di una unita' senza DMA?
+
+    La presenza del DMA consente di richiedere dati alla memoria senza passare dalla CPU, alleggerendo il suo carico di lavoro.
+    (Di contro si potrebbe creare un congestionamento a livello dei bus).
+
+2. L'algoritmo del Banchiere e il grafo di Holt servono entrambi per gestire i Deadlock. Quali sono le differenze, quando e
+perche' si usa l'uno e quando e perche' l'altro?
+
+    Entrambe sono tecniche di prevenzione contro i deadlock.
+    Il grafo di holt serve a rappresentare graficamente processi e risorse (con relative richieste e concessioni) in modo da rendere più
+    semplice rilevare una situazione di deadlock (utilizzando il teorema relativo ai knot).
+    L'algoritmo del banchiere serve a determinare se l'assegnamento di una determinata risorsa ad un processo porta il sistema ad uno stato 
+    di unsafe, che potrebbe degenerare in deadlock.
+
+3. Quali problemi risolve la paginazione e quali la segmentazione?
+
+    La paginazione risolve la frammentarietà esterna e riduce quella interna, mentre la segmentazione risolve quella interna 
+    (ed evidenzia quello della frammentazione esterna), lascia maggiore libertà nella quantità di memoria da allocare e offre
+    un maggiore livello di protezione dato dalla divisione funzionale del programma in aree di memoria distinte, che possono 
+    anche esere di sola lettura.
+    Le due tecniche possono essere utilizzate contemporaneamente ottenendo i benefici di entrambe al costo di un apposito componente 
+    hardware, la MMU.

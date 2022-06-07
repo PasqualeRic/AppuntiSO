@@ -1,0 +1,32 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Scrivere un programma che mostri il funzionamento del file locking.
+In particolare il programma cplk avra’ due argomenti che I pathname di due file. Il contenuto del primo file deve
+essere copiato nel secondo usando la system call sendfile.
+Prima di iniziare la copia occorre usare la system call fcntl per bloccare il file di output (write lock).
+Completata la copia occorre chiamare nuovamente la fcntl per sbloccare il file.
+Inserire un ritardo (sleep) con valore casuale da 1 a 10 secondi sia prima sia dopo aver sbloccato il file e
+stampe di controllo che indichino quando il file viene bloccato e sbloccato.
+In questo modo lanciando piu’ esecuzioni concorrenti con output sullo stesso file deve apparire che l’accesso in
+scrittura e’ mutualmente esclusivo.
+
+    Es. di output:
+    $ cplk cplk.c out
+    locked attende da 1 a 10 sec
+    unlocked attende da 1 a 10 sec
+    $
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Scrivere un altro programma rdlk che blocchi il file passato come parametro in lettura (read lock) per un numero di
+secondi random (da 1 a 10 secondi).
+Anche in questo caso inserire stampe di controllo che indichino quando il file viene bloccato e quando viene
+sbloccato.
+Eseguendo molteplici copie di rdlk con cplk dell’esercizio 1 si dovrebbe vedere che I lock rispettano l’invariante dei
+readers/writers. (usare come parametro di rdlk il secondo parametro di cplk).
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Scrivere un programma python (o uno script bash) che dato come parametro il pathname di una directory ponga in
+output il numero dei file e delle directory contenute nel sottoalbero senza contare I file simbolici.

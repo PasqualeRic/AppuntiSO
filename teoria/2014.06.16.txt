@@ -1,0 +1,164 @@
+Esercizio c.1: 
+
+scrivere il monitor rendezvous che consente ai processi di sincronizzarsi e scambiare dati.
+Ogni processo chiama la procedure entry rendezvous.sync specificando due parametri: il numero dei processi con i quali il processo
+corrente vuole sincronizzarsi e un vettore di ugual numero di interi. Il primo elemento e' inizializzato con il valore conferito dal
+processo chiamante.
+
+I processi devono coordinarsi con altri che abbiano chiesto di sincronizzarsi con un ugual numero di processi. Quindi, se e quando N
+processi hanno chiamato la rendezvous.sync chiedendo la sincronizzazione con N processi, tutti N vengono riattivati. Il vettore
+passato come secondo parametro deve contenere i valori conferiti dagli N processi, uno in ogni elemento del vettore, seguendo
+l'ordine di chiamata della rendezvous.sync.
+
+es. P1: int v1[]={42,0,0}; rendezvous.sync(3,v1) …. P1 si blocca....
+    P2: int v[]={314,0,0}; rendezvous.sync(3,v) …. P2 si blocca....
+    P3: int vv[]={1,0}; rendezvous.sync(2,vv) …. P3 si blocca....
+    P4: int q[]={13,0,0}; rendezvous.sync(3,q) … P4 sblocca anche P1 e P2. Il secondo paramentro per tutti e tre avra' valore [42,314,13]
+    ….P3 si sblocchera' se e quando un altro processo chiamera' rendezvous.sync con primo parametro 2
+
+Svolgimento:
+
+monitor rendezvous{
+
+    struct cond{
+        condition c;
+        int num;
+        array a
+    }
+
+    sync  = new cond array(MAX+1) 
+
+    entry init(){
+        for(int i=1; i<=MAX; i++){
+            sync[i].num = 0;
+            sync[i].a = new in array(i)
+        }
+    }
+
+    entry sync(int N, arr[N]){
+        if(N > 0 && N <= MAX){
+            toReturn = new array(N)
+            sync[N].a[sync[N].num] = arr[0]
+            sync[N].num ++;
+            if(sync[N].num < N){
+                sync[N].c.wait();
+            }
+            sync[N].num --;
+            sync[N].c.signal();
+            return sync[N].a;
+        }
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Usando semafori implementare un emulatore di un servizio di message passing asincrono.
+Occorre quindi implementare le primitive:
+
+    void asend(msg m, pid_t dst)
+    msg arecv(pid_t sender)
+
+facendo uso di semafori (generali, fifo).
+(e' presente una chiamata getpid() che fornisce il pid del chiamante). La asend riceve da un mittente specificato (non e' richiesta la
+gestione della ricezione da qualunque processo).
+
+Svolgimento:
+
+    struct message{
+        pid_t dest;
+        string msg;
+        message*next;
+    }
+
+    struct blocked{
+        pid_t proc;
+        semaphore sem;
+    }
+
+    semaphore mutex(1);
+    message* list;
+    blockedproc*blocked;
+
+    void asend(msg m, pid_t dst){
+        mutex.P();
+        list.insert(dst,m); 
+        if(isBlocked(dst,blocked))
+            semaphore sem = blockedProcWithPid(dst, blocked);
+            sem.V();
+        mutex.V();
+    }
+
+    msg arecv(pid_t sender){
+        mutex.P();
+        string msg;
+        if(!contains(list, getPid()))
+            sem = new semaphore(0)
+            blocked.insert(getPid(), sem)
+            mutex.V();
+            sem.P();
+        msg = list.removeFirst(getPid());               //l'inserimento di insert è in coda, quindi così restituisco fifo
+        mutex.V();
+        return msg;
+    }
+
+    In questo modo si può ricevere da qualunque processo, per implementare la stessa cosa su un processo specifico basta inserire il pid del 
+    sender nell strutture dati e fare un controllo in più
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Scrivere uno stato per per l'algoritmo del banchiere a tre valute in modo tale che lo stato non sia safe ma
+se si considerassero solamente due valute alla volta lo stato sarebbe safe.
+
+Svolgimento:
+
+Consideriamo tre processi: P1,P2,P3
+consideriamo 3 valute
+Consideriamo il limite di P1 come: (3,2,2)
+Consideriamo il limite di P2 come: (1,3,2)
+Consideriamo il limite di P3 come: (2,2,3)
+Consideriamo lo stato in cui P1 ha ottenuto (3,2,0) P2 ha ottenuto (1,2,2) e P3 ha ottenuto (1,2,3);
+Consideriamo che il banchiere abbia ancora a disposizione: (0,0,0)
+Lo stato descritto rispetta i parametri della consegna.
+
+considerando le valute:
+1,2,3:  UNSAFE, 
+    a P1 serve la risorsa 3, ma è bloccata da P2,P3
+    a P2 serve la risorsa 2, ma è bloccata da P1,P3
+    a P3 serve la risorsa 1, ma è bloccata da P1,P2
+
+
+1,2:    P1:(3,2)    P2:(2,2)    P3:(1,2)   SAFE considerando che P1 rilascerà le risorse 
+1,3:    P1:(3,0)    P2:(2,2)    P3:(1,3)   SAFE considerando che P2 rilascerà le risorse 
+2,3:    P1:(2,0)    P2:(2,2)    P3:(2,3)   SAFE considerando che P3 rilascerà le risorse 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+
+a) confrontare gli algoritmi di scheduling Shortest Job Next (SJN) e Round Robin. Quali sono i casi di applicazione dell'uno e
+dell'altro?
+
+    SJN: da priorià al processo con il cpu burst più basso (usato per schedulazioni a lungo termine in modo da minimizzare il tempo di attesa)
+    RR: assegna la stessa quantità di tempo e priorità ad ogni processo, inoltre è preemptive. (in generale molto valido, ma sconsigliato
+    quando si ha a che fare con processi che devono avere una priorità maggiore o un maggior tempo in cpu).
+
+b) quali operazioni compie un file system basato su i-node (per esempio ext2, minix o bffs) quando l'utente digita il comando:
+ln /etc/passwd /tmp  ?
+
+    Il comando in questione crea un hard link del file passwd all interno della directory tmp.
+    Probabilmente vengono scanditi gli inode relativi alla directory etc e a passwd in modo da ottenere le informazione necessarie
+    alla creazione del link. Inoltre al completamento dell'operazione verrà aumentato il contatore di riferimenti relativo a passwd.
+    A questo punto bisogna costruire il percorso del link dalla sua directory fino a quella di destinazione e una volta fatto, viene
+    creato e aggiunto. Anche il link avrà un proprio inumber e un posto nella tabella degli inode. 
+
+c) quale supporto hardware e' necessario per implementare un algoritmo di rimpiazzamento LRU?
+
+    Ci sono due implementazioni possibili:
+    1-Serve un componente hardware che tenga traccia dei timestamp dei vari processi in modo da determinare quello da eliminare.
+    2-Si utillizza uno stack a doppia testa e ogni volta che una pagina viene utilizzata viene posta sulla cima dello stack. 
+        La pagina vittima sarà sempre quella sul fondo.

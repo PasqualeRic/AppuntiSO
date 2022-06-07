@@ -1,0 +1,26 @@
+Esercizio 1: Linguaggio C (obbligatorio): (20 punti)
+Usando signalfd (e non signal o sigaction) scrivere due programmi tx e rx.
+Rx deve essere attivato per primo e per prima cosa stampa il suo pid e aspetta.
+Tx ha due parametri: il pid del ricevente rx e una stringa. Rx deve stampare la stringa passata come secondo
+parametro a Tx e uscire. La stringa deve essere spedita usando solo segnali. Ogni bit di ogni carattere deve essere
+inviato usando SIGUSR1 se vale 1 e SIGUSR2 se vale 0. Al ricevimento di ogni bit rx spedisce un segnale di
+acknowledgment a tx che provvede a spedire il successivo.
+
+
+
+Esercizio 2: completamento (10 punti)
+SI costruiscano due programmi txtime e rxnull per stimare l'efficienza di tx e rx. Rxnull e' uguale all'rx precedente
+ma non stampa nulla.
+Txtime ha come parametri il pid del ricevente e un numero intero n. txtime deve spedire n caratteri 'K' al txnull e alla
+fine deve stampare il tempo medio impiegato per spedire n carattere.
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Scrivere un programma python o uno script bash che conti il numero dei file eseguibili presenti nella directory
+passata come parametro catalogandoli per tipo di interprete. (se il file e' di testo si guarda cio' che segue #! nella
+prima riga, tutti quelli che non iniziano con #! contateli come generici “exec”)
+$ contaexec /usr/bin
+/bin/bash: 20
+/usr/bin/env: 10
+exec: 12

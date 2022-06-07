@@ -1,0 +1,152 @@
+Esercizio c.1: 
+
+Per colpa delle frane un ponte veicolare e' rimasto danneggiato. I veicoli possono ora percorrerlo solo in senso unico alternato e, per
+non eccedere la portata, al piu' ci possono essere sul ponte N veicoli contemporaneamente.
+Scrivere il monitor bridge sapendo che i veicoli chiameranno il monitor prima di entrare nel ponte e dopo averlo attraversato. I veicoli che entrano
+dal lato est escono dal lato ovest e viceversa. Quindi i (numerosi) veicoli eseguiranno uno dei due frammenti di codice seguenti:
+
+    bridge.enter(E)
+    /* cross the bridge */
+    bridge.exit(W)
+
+    bridge.enter(W)
+    /* cross the bridge */
+    bridge.exit(E)
+
+La soluzione proposta deve evitare deadlock e deve essere efficiente. (controesempio: una soluzione che prevedesse l'attraversamento del ponte da
+parte di un solo veicolo alla volta sebbene rispetti tutti i vincoli sarebbe considerata errata poiche' inefficiente).
+Oltre al codice si richiede una descrizione degli accorgimenti adottati per rendere la soluzione efficiente.
+
+Svolgimento:
+
+la funzione getPlaceNum(x) restituisce 0 se x == W e 1 se x == E
+
+monitor bridge(){
+    
+    condition ok2enterfrom = new condition array(2);
+    int waiting = new int array(2);
+    int traversing = 0;
+
+    bool change = false;
+
+    int inUseFrom = 0;
+
+
+    entry void enter(from){
+        fromNum = getPlaceNum(from); 
+        if(fromNum != inUseFrom || (change && fromNum == inUseFrom) || traversing == MAX){
+            waiting[fromNum]++;
+            if(waiting[fromNum] > waiting[1-fromNum] ) change = true;
+            ok2enterfrom[fromNum].wait();
+            waiting[fromNum]--;
+        }
+        traversing++;
+    }
+
+    entry void exit(to){
+        traversing--;
+        if(change){
+            if(traversing == 0){
+                change = false;
+                inUseFrom = 1-inUseFrom;
+                ok2enterfrom[inUseFrom].signal();
+            }
+        }else{
+            ok2enterfrom[inUseFrom].signal();
+        }
+    }
+}
+
+//questa soluzione presenta starvation, forse sarebbe meglio fissare un numero di macchine 
+che possono passare da un lato prima di effettuare un cambio (in aggiunta alla presente impementazione, altrimenti si 
+rischierebbe nuovamente starvation)
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+Sia dato un servizio di message passing asincrono che preveda le seguenti chiamate:
+ 
+    void asendx(pid_t destination, message msg)
+    message arecvx(void)
+
+Rispetto al classico servizio di message passing asincrono la funzione arecvx non prevede la selezione del mittente, restituisce il primo messaggio
+ricevuto.
+
+a. Questo esercizio chiede di implementare su di esso la funzione
+    
+    message msgxchange(pid_t pid, message msg)
+
+che realizzi un servizio di scambio sincrono di messaggi. Un processo p che chiami la msgxchange specificando come parametri l'identificativo di
+un processo q e un messaggio, deve sospendersi fino a quando il processo q non abbia similmente chiamato la msgexchange indicando
+l'identificativo di p come parametro. Il messaggio passato come parametro da p deve essere il valore di ritorno della funzione per q e, viceversa, il
+messaggio passato come parametro da q deve essere il valore di ritorno per p.
+b. Date le specifiche del punto a., e' possibile che si generino casi di deadlock?
+
+Svolgimento:
+
+a)
+    message msgxchange(pid_t pid, message msg){
+        queue q;
+        pid_t sender;
+        message mess;
+        asendx(pid, (getPid(),msg))
+        (sender,mess) = arecvx()
+        while(sender != pid){
+            q.enqueue((sender,mess));
+            (sender,mess) = arecvx();
+        }
+        while(!q.isEmpty()){
+            asendx(getPid, q.dequeue());
+        }
+        return mess;
+    }
+b)
+
+    un possibile caso di deadlock è quello in cui A contatta B, B contatta C, C contatta A.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1:
+
+Sia dato l'algoritmo di rimpiazzamento MAXNUM. Come pagina da rimpiazzare MAXNUM sceglie sempre quella con l'indirizzo
+logico piu' alto (numero di pagina maggiore).
+a. mostrare una stringa di riferimenti di lunghezza infinita e che generi infiniti page fault tale che MIN e MAXNUM si comportino esattamente
+nello stesso modo
+
+b. mostrare una stringa di riferimenti di lunghezza infinita tale che MAXNUM generi un page fault ad ogni accesso in memoria mentre MIN generi
+un numero finito di page fault
+(in entrambi i punti l'insieme delle pagine utilizzate nelle stringhe di riferimenti deve essere finito)
+
+Svogimento:
+
+a)
+    3 frame per 4 pagine.
+    Stringa dei riferimenti: 1,2,3,4,1,2,3,1,2,4,1,2,3,1,2,4....1,2,3,1,2,4....
+b)
+    3 frame per 4 pagine.
+    Stringa dei riferimenti: 1,2,3,4,3,4,3,4,3,4,3,4,3,4,3,4,3,4,3,4,3,4....
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle seguenti domande:
+1. La paginazione non elimina completamente ne' la frammentazione interna ne' quella esterna ma le rende trascurabili. Perche'?
+
+...
+
+2. Il file system ext2 e' piu' efficiente nell'accesso diretto a file di piccole dimensioni rispetto a quelli di grandi dimensioni. Perche'?
+
+...
+
+3. In quali casi l'algoritmo C-Look e' preferibile all'algoritmo Look? Perche'?
+
+...
+
+4. Nella memorizzazione delle capability per il controllo di accesso ai file puo' essere usato un algoritmo di crittografia a singola chiave
+(chiave privata). Perche'?
+
+...
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

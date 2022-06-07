@@ -1,0 +1,115 @@
+Esercizio c.1: 
+
+Scrivere il monitor altcolbb. Il monitor deve implementare le seguenti procedure entry:
+ 
+    void write(color_t color, generic_type val);
+    generic_type read(void);
+
+Esistono elementi di due colori diversi, rosso e blu. Altcolbb deve implementare un buffer limitato con la particolarita' che gli elementi
+devono essere inseriti nel buffer (fino a un numero massimo MAX) a colori alternati: se l'ultimo elemento nel buffer e' rosso il
+prossimo deve essere blu e viceversa. Quando il buffer e' vuoto il primo elemento inserito puo essere sia rosso sia blu.
+
+Svolgimento:
+
+monitor altcolbb{
+
+    struct e{
+        color_t color;
+        generic_type val;
+    }
+
+    buf = new e queue;
+    condition ok2read;
+    c = new condition array(2)  //0: blu, 1: rossi
+
+    entry void write(color_t color, generic_type val){
+        int num = (color == "red");
+
+        if(buf.lastElement().color == color || buf.length == MAX){
+            c[num].wait();
+        }
+        buf.enqueue({color:color, val:val});
+        ok2read.signal()
+
+    }
+    
+    entry generic_type read(void){
+        if(buf.isEmpty()) {
+            ok2read.wait();
+        }
+        elem = buf.dequeue();
+        lastNum = (buf.lastElement().color == "red")
+        c[ (1-lastNum) ].signal();
+        return elem;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio g.1:
+
+a) Sia data la seguente stringa di riferimenti: 012345012340123012010.
+mostrare il comportamento degli algoritmi MIN e FIFO quando operano su una memoria di 4 frame.
+b) Data una memoria di 4 frame contenente le pagine 0,1,2,3 rispettivamente nei frame 0,1,2,3. Mostrare una stringa di riferimenti di
+un programma che usi 5 pagine (esiste la pagina 4 non ancora mappata in memoria oltre alle 4 cariate nei frame) e che consenta alla
+fine dell'esecuzione di avere nel frame 0 la pagina nel frame 1 la pagina 2 nel frame 3 la pagina 4 e nel frame 3. L'algoritmo di
+rimpiazzamento da usare e' MIN.
+
+Svolgimento: 
+
+ Pagina richiesta:  0   1   2   3   4   5   0   1   2   3   4   0   1   2   3   0   1   2   0   1   0
+
+    Algoritmo MIN:  0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+                        1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1   1
+                            2   2   2   2   2   2   2   2   2   2   2   2   2   2   2   2   2   2   2
+                                3   4   5   5   5   5   3   4   4   4   4   3   3   3   3   3   3   3
+    (9/21)
+
+
+   Algoritmo FIFO:  0   0   0   0   4   4   4   4   2   2   2   2   1   1   1   1   1   1   1   1   1
+                        1   1   1   1   5   5   5   5   3   3   3   3   2   2   2   2   2   2   2   2
+                            2   2   2   2   0   0   0   0   4   4   4   4   3   3   3   3   3   3   3
+                                3   3   3   3   1   1   1   1   0   0   0   0   0   0   0   0   0   0
+    (13/21)
+
+
+  Stringa dei riferimenti: 0123  ... non si capisce la consegna.
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+Rispondere alle seguenti domande:
+
+1. Quali sono i casi di frammentazione interna ed esterna che possono avvenire usando la paginazione.
+
+    Caso di frammentazione esterna: Caso in cui utilizziamo pagine di dimensione variabile e ad un certo punto una pagina di dimensione 
+    N richiede l'accesso, ma anche se noi abbiamo spazio superiore a N, questo è spezzettato in blocchi di dimensione più piccola sparsi 
+    per la memoria (che sono stati lasciati dopo che i processi che li occupavano sono terminati) e quindi non possiamo assegnare al 
+    processo la memoria che desidera.
+    Caso di frammentazione interna: Caso in cui utilizziamo pagine di dimensione fissa, ma i processi richiedenti molto difficilmente 
+    avranno bisogno di tutto lo spazio di cui le N pagine che gli sono state assegnate dispongono 
+    (la perdita ovviamente è minore della dimensione di una pagina per ogni processo). 
+
+2. Per I file system di tipo fat non e' efficiente l'accesso diretto (ad esempio con la system call lseek) a file di grandi dimensioni.
+Perche'?
+
+    Sappiamo che difficilmente il contenuto di un file di grandi dimensioni si trova in celle di memoria contigue.
+    Sappiamo inoltre che la tabella FAT (conoscendo punto di inizio e di fine di un file) ci aiuta a scandire il file 
+    stesso nella sua interezza.
+    Ma se il file è di grandi dimensioni aumenta notevolmente il numero di volte che dobbiamo scandire la FAT per continuare a consultare
+    il file (il problema viene praticamente azzerato nel momento in cui i blocchi FAT vengono memorizzati in cache)
+
+3. Per quali tipi di processo e' indicato uno schedule a priorita' statica? Quale problema puo' essere causato da uno scheduler a
+priorita' statica? perche'?
+
+    Una priorità statica può essere assegnata solo a processi secondari la cui esecuzione (nel breve periodo) non ha particolare rilevanza.
+    Il problema principale che può essere causato da uno scheduler a priorità statica infatti è la tsarvation dei processi con bassa priorità.
+    Infatti se continuano ad arrivare processi a priorità media o alta, quelli con priorità più bassa non verranno mai eseguiti.
+
+4. Cosa e' un knot in un grafo? Quale teorema lega la definizione di knot in un grafo e la presenza di deadlock fra processi?
+
+    Un knot in un grafo è essenzialmente un ciclo tra i nodi in un determinato insieme.
+    Teorema: dato un grafo di Holt con una sola richiesta sospesa per processo, se le risorse sono ad accesso mutualmente esclusivo, 
+    seriali e non prerilasciabili, allora il grafo rappresenta uno stato di deadlock se e solo se esiste un knot.

@@ -1,0 +1,32 @@
+Esercizio 1: Linguaggio C (obbligatorio) 20 punti
+Scrivere un programma ager in grado di invecchiare file.
+Il programma deve poter prendere una lista di file come parametri o nessun parametro, nel qual caso invecchierà
+tutti I file della directory corrente. “invecchiare” significa predatare il tempo di ultimo accesso e di modifica di 10
+giorni.
+
+    Esempio:
+    $ ls -l file
+    -rw-r--r-- 1 renzo renzo 0 Feb 17 09:07 file
+    $ ./ager file
+    $ ls -l file
+    -rw-r--r-- 1 renzo renzo 0 Feb 7 09:07 file
+
+
+
+Esercizio 2: Linguaggio C: 10 punti
+Completare l’esercizio 1 ponendo una gestione opportuna dei parametri in linea comando che preveda di
+poter modificare solo la data di accesso o quella di modifica, di definire il tempo di “invecchiamento” e un help.
+Si possono inserire altri parametri ritenuti opportuni.
+
+
+
+Esercizio 3: Script bash o Python: (10 punti):
+Il programma deve elencare I file della directory corrente divisi per suffisso (e al termine l’elenco di quelli privi di
+suffisso.
+
+    es:
+    .c: primo.c var.c main.c
+    .h: primo.h const.h
+    .odt: relazione.odt
+
+    makefile README COPYING

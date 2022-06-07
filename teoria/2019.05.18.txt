@@ -1,0 +1,172 @@
+Esercizio c.1: 
+
+Una fabbrica usa 16 tipi di componenti (es. ruota telaio scocca sellino catena ....). Ogni volta che occorre
+costruire un prodotto occorre prendere dal magazzino le parti necessarie, e.g. per fare un go-kart occorre una scocca e
+4 ruote, per fare una bicicletta un telaio, un sellino, 2 ruote e una catena.
+Scopo dell'esercizio è di scrivere un monitor storage per la gestione del magazzino (un vettore di 16 interi).
+Ogni volta che un magazziere riceve un carico di componenti dal formitori chiama la funzione:
+ storage.add(components)
+dove components è un vettore di 16 elementi, indica quanti componenti di ogni tipo vengono aggiunti al magazzino.
+Quando un operaio deve costruire un prodotto chiama:
+ storage.get(components)
+dove components è un vettore di 16 elementi: indica quanti componenti di ogni tipo sono necessari per costruire il
+prodotto richiesto.
+Ovviamente se manca qualche componente occorre aspettare che i magazzinieri ricevano e mettano nel magazzino le
+parti mancanti.
+Le richieste degli operali devono essere soddisfatte in ordine FIFO.
+Ci possono essere casi di Deadlock? e di Starvation? perché?
+
+Svolgimento:
+
+la funzione isCompletable prende in input due array
+-il primo con i pezzi richiesti
+-il secondo con i pezzi disponibili
+la funzione controlla semplicemente se richiesti[i]<=disponibili[i] per ogni i appartenente a [0,15] e in caso affermativo restituisce true
+false altrimenti.  
+
+monitor storage{
+
+    array comp[16] = 0;
+    condition wait4components;
+    queue of array q;
+
+    entry void add(components){
+        for(int i=0; i<16; i++){
+            comp[i] = comp[i]+components[i];
+        }
+        if(!q.isEmpty() && isCompletable(q.top,comp)) 
+            wait4components.signal();
+    }
+
+    entry get (components){
+        if(!q.isEmpty() || !isCompletable(components,comp)){
+            q.enqueue(components);
+            wait4components.wait();
+        }
+        for(int i=0; i<16; i++){
+            comp[i] = comp[i]-components[i];
+        }
+    }
+}
+
+Non possono esserci casi di deadlock.
+può esserci starvation se il primo della coda non viene mai soddisfatto e queindi non fa avanzare chi dietro di lui potrebbe.
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Una sezione-acritica-unificante (SAU) è una sequenza di istruzioni che può essere eseguita
+contemporaneamente da più processi, ma i processi possono uscirne solo quanto tutti i processi che stanno
+eseguendo la SAU ne completano l'esecuzione.
+Ogni processo chiama:
+ SAU_enter()
+ ... codice SAU
+ SAU_exit()
+Scrivere le funzioni SAU_enter e SAU_exit mediante l'uso di semafori
+
+Svolgimento:
+
+mutex = new semaphore(1)
+int proc=0;
+sem = new semaphore(0)
+
+SAU_enter(){
+    mutex.P();
+    proc++;
+    mutex.V();
+}
+
+SAU_exit(){
+    mutex.P();
+    proc--;
+    if(proc != 0){
+        mutex.V()
+        sem.P();
+    }
+    sem.V();
+    mutex.V();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+In un sistema vengono eseguiti due tipi di processo, il tipo A richiede 3ms di calcolo e termina, il tipo B
+richiede 4ms di calcolo e poi termina. Processi di tipo A vengono attivati ogni 6 ms (cioe' al tempo 0, 6, 12, 18, 24, 30...)
+mentre processi di tipo B ogni 8ms (al tempo 0, 8, 16, 24, 32, 40....). Ogni processo di tipo A deve completare
+l'esecuzione prima che inizi il successivo dello stesso tipo, e in modo equivalente ogni processo di tipo B deve
+terminare prima che venga eseguito il successivo.
+a) è possibile eseguire i processi con uno scheduler non-preemptive a priorità con i processi di tipo B a maggiore
+priorità di quelli del tipo A.
+b) è possibile eseguire i processi con uno scheduler non-preemptive a priorità con i processi di tipo A a maggiore
+priorità di quelli del tipo B
+c) è possibile eseguire i processi con uno scheduler round robin con timeslice 2ms? (il primo a partire potrebbe essere
+di tipo A o di tipo B).
+
+Svolgimento:
+
+a)
+
+Time:   0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25
+proc:   |      B        |     A     |     A      |       B       |     A     |       B       |
+
+b)
+
+Time:   0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25
+proc:   |     A     |       B       |     A      |       B       |     A     |       B       |
+
+c)
+
+Time:   0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25
+proc:   |   A   |   B   | A |   B   |   A   |   B   | A |   B   |   A   |
+numproc:    1       1     1     1       2       2     2     2       3
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+rispondere alle seguenti domande:
+
+a) Quando un sistema è in trashing il carico della CPU (o delle CPU) è alto o basso, perché?
+
+    Probabilmente il carico della CPU è basso poichè lo stato si dice in trashing se i processi passano più tempo a risolvere i page 
+    fault che ad eseguire. Ad avere un carico molto elevato saranno la memoria principale e le relative componenti che si occupano delle pagine. 
+
+b) Esistono partizioni del disco che vengono usate senza creare su di esse strutture di file system? perché?
+
+    Si, ne è un esempio la partizione di swap.
+    Questa ha molteplici utilizzi, ed è infatti sempre consigliato mantenere una partizione sul disco a questo scopo, vediamone alcuni:
+    - può fungere da spazio di overflow per la RAM. Se la RAM si riempie completamente, tutte le applicazioni 
+      aggiuntive verranno eseguite dalla partizione di swap anziché dalla RAM.    
+    - Una partizione di swap può anche aiutare a spostare alcuni elementi dalla memoria al disco rigido per lasciare più spazio 
+      in memoria per gli elementi più importanti.
+    - Una partizione di swap viene utilizzata come destinazione del contenuto della memoria ogni volta che si dice al sistema di ibernare. 
+
+c) Un sistema operativo a microkernel è più flessibile, più affidabile ma meno efficiente di un kernel monolitico.
+Spiegare brevemente il motivo delle tre affermazioni.
+
+    un kernel monolitico è un aggregato unico (e ricco) di procedure di gestione mutuamente coordinate e astrazioni dell’HW.
+    un microkernel è un insieme di semplici astrazioni dell’HW gestite e coordinate da un kernel minimale, 
+    basate un paradigma client/server, e primitive di message passing.
+
+    Un kernel monolitico risulta più efficiente di un microkernel in quanto è meno complesso gestire il codice di controllo
+    in un’unica area di indirizzamento (kernel space), mentre nei microkernel si deve tenere in considerazione il costo per la gestione dello 
+    scambio di messaggi.
+    Ma d'altro canto il microkernel risulta:
+    - più flessibile in quanto il kernel è più espandibile e modificabile: (per aggiungere un servizio: si aggiunge un processo a livello utente, 
+      senza dover ricompilare il kernel e per modificare un servizio si riscrive solo il codice del servizio stesso). Inoltre risulta 
+      facilmente portabile verso altre architetture hw.
+    - più affidabile in quanto se per esempio il processo che si occupa di un servizio cade, il resto del sistema può continuare ad eseguire.
+      L'affidabilità è anche conseguenza della sicurezza garantita dalla possibilità di assegnare livelli differenti di sicurezza a differenti
+      processi di sistema.
+
+
+d) Come vengono memorizzati i link fisici in un filesystem?
+
+    per implementare un hard link le informazioni relative al file vengono copiate in entrambe le directory e non è necessaria una doppia 
+    ricerca nel file system. Inoltre è impossibile distinguere la copia dall’originale.
+    Per implementare gli hard link è necessario utilizzare la tecnica degli i-node, con un apposito contatore di riferimenti.
+

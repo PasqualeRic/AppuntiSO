@@ -1,0 +1,159 @@
+Esercizio c.1: 
+
+Il monitor delay deve fornire tre procedure entry:
+boolean delay(unsigned int timeout)
+int count(void)
+void tick(void)
+La funzione tick viene richiamata ad ogni millisecondo. Un processo messo in attesa a causa di una delay attende per
+un numero di millisecondi (tick) indicato nel parametro.
+La procedure entry count deve restituire il numero di processi attualmente in attesa a causa di una delay.
+Scrivere delay.
+
+
+Svolgimento:
+
+monitor delay{
+
+    linkedList timeq;    //list of elements like (condition, value of the timeout)
+    globalTime = 0;
+    waiting = 0;
+    condition c;
+
+    entry boolean delay(unsigned int timeout){
+        waiting++;
+        cond = new condition();
+        timeq.insertOrderedByTime({cond,totaltime: timeout + globaltime});           //the linked list will be ordered so that the element at the head is the element with lower timeout value 
+        cond.wait();
+        waiting--;
+    }
+
+    entry int count(){
+        return waiting;
+    }
+
+    entry void tick(){
+        globalTime++;
+        while( timeq.haveTimeout() ){                                      // simply control if globalTime = element.totalTime
+            cond, totalTime = timeq.dequeue();
+            cond.signal();
+        }
+    }
+
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+sia dato un sistema di processi a memoria privata che fornisca servizio di message passing asincrono.
+Siano date inoltre la funzione call4fun ed il processo server definite come segue:
+
+def call4fun (x):
+    asend(server, (getpid(), x, 0, 1))
+    return(arecv(server))
+
+process server:
+ forever:
+    (s, n, r, v) = arecv(*)
+    if (n > 0)
+        asend(server, (s, n-1, r+v, v+2))
+    else
+        asend(s, r)
+Cosa calcola la funzione call4fun e come viene calcolato questo valore?
+
+
+Svolgimento:
+
+call4fun invia al processo server (pid, x, 0, 1) e si mette in attesa aspettando un messaggio dal proceso server (che verrà poi restituito)
+Il proceso server riceve i 4 parametri ed effettua una distinzione
+-se x > 0 manda a se stesso un oggetto contenente (pid, x-1, r+v, v+2)
+-se x <= 0 risponde al mittente inviando il valore di r come messaggio
+Capiamo quindi che ci troviamo di fronte ad un processo server che effettua una sorta di chiamata ricorsiva fino a che il valore di x viene decrementato a 0.
+
+facciamo un test
+    (pid, 3, 0, 1) -> (pid, 2, 1, 3) -> (pid, 1, 4, 5) -> (pid, 0, 9, 7)
+    da cui per questi valori di x abbiamo:
+    0: 0
+    1: 1
+    2: 4
+    3: 9
+
+in sintesi il valore di finale di r corrisponde al quadrato del valore iniziale di x. 
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+In un sistema ci sono 3 classi di risorse A, B, C e 4 processi p,q,r,s.
+In un determinato istante le tre risorse della classe A sono assegnate a p (due risorse) e a s (1 risorsa), l'unica risorsa
+della classe B è assegnata ad r mentre le due risorse della classe C sono assegnate a q ed a r. Sono pendenti le
+seguenti richieste: p ed s richiedono una risorsa della classe C e q chiede una risorsa della classe A.
+Lo stato così determinato è di deadock? Mostrare il procedimento usato per ottenere la risposta.
+
+Svolgimento:
+
+Situazione:
+A: (p) (p) (s)
+B: (r)
+C: (q) (r)
+
+Richieste: 
+C: p, s
+A: q
+
+Notiamo come il processo r non ha richieste pendenti, e quindi possiamo supporre che terminerà la propria esecuzione rilasciando le risorse che occupa.
+
+Situazione 2:
+A: (p) (p) (s)
+B: ( )
+C: (q) ( )
+
+a qusto punto sia p che s impadronendosi della risorsa C completerebbero la lista delle risorse di cui necessitano, in questo modo una volta 
+terminata l'esecuzione potranno rilasciare a loro volta le risorse e permettere la prosecuzione del sistema. 
+Non è presente deadlock, il sistema dovrebbe risultare nella corretta terminazione dei processi e nel rilascio di tutte le risorse.  
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+rispondere alle seguenti domande:
+
+a) perché uno scheduler round-robin può essere inadatto a gestire processi con I/O multimediale?
+
+    Round robin E' basato sul concetto di quanto di tempo (o time slice): un processo non può rimanere in esecuzione per un tempo superiore alla durata del quanto di tempo.
+    Questo meccanismo fornisce a tutti i processi le stesse possibilità di esecuzione. il problema è che non tutti i processi sono uguali, ad esempio quelli con I/O 
+    multimediale non transigono sul tempo.
+
+
+b) per risolvere un problema di trashing è necessario terminare forzatamente dei processi o è sufficiente bloccare
+l'esecuzione di qualche processo e riattivarli successivamente? Perché?
+
+    Una possibile causa di trashing è che in un sistema con allocazione globale, i processi tendono a "rubarsi i frame a vicenda". 
+    in particolare non riescono a tenere in memoria i frame utili a breve termine (perchè altri processi chiedono frame liberi) e quindi 
+    generano page fault ogni pochi passi di avanzamento.
+    Ad ogni modo la sospensione temporanea dei processi prbabilmente risolve il problema, infatti l'obiettivo è quello di limitare il numero dei processi attivi 
+    per permettere a questi ultimi di avere accesso alle pagine di cui hanno bisogno. ciò vuol dire che le pagine in memoria che appartengono ai processi "di troppo"
+    vanno deallocate, ma basta salvarle e far si che il processo venga richiamato più avanti per continuare la propria esecuzione.  
+
+
+c) Con lo stesso numero di dischi, RAID1 o RAID5 consente di memorizzare più dati? Perché? Quale è più sicuro? Perché?
+
+Raid 1 effettua solo un servizio di mirroring su blocchi di dischi differenti, dando la possibilità di accedere a uno stesso dato su dischi diversi (anche dopo
+l'eventuale rottura di uno di questi). Sostanzialmente però la quantità di dati unici che possono essere immagazzinati non cambia.
+Raid 5 invece implementa lo striping, ovvero divide i dati in stripes di grandi dimensioni che vengono suddivise nei vari dischi in modo che vi si possa accedere in parallelo.
+Qui si ha un notevole aumento delle performance in lettura, ma nessun vantaggio dal punto di vista della quantità di dati scrivibili. Ovviamente non essendoci mirroring, a 
+parità di numero di dischi, Raid 5 permette di immagazzinare più dati di Raid 1. 
+In compenso Raid 1 risulta più sicuro per i motivi esposti prima.
+
+
+d) Perché è difficile revocare una autorizzazione fornita tramite una capability?
+
+Si può paragonare a dover cambiare serratura dopo aver dato le chiavi a qualcuno. 
+Quando arriva qulcun con il diritto (tramite stringa criptata) di poter leggere un determinato file faccio fatica a rimuovere questa possibilità. 
+O uso una blacklist (meccanismo esterno alla capability) oppure cambio nome all'oggetto. 
+A questo punto tutti devono richiedere l'accesso nuovamente e posso non assegnarlo alla persona cui volevo revocarla. 
+Oppure un altra possibilità è quella di usare capabilities a tempo e non effettuare il rinnovo su determinati utenti.
+è quindi possibile revocare un autorizzazione fornita tramite capability, ma si tratta di metodi scomodi o comunque non efficienti.

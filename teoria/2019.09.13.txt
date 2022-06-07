@@ -1,0 +1,179 @@
+Esercizio c.1: 
+
+Scopo di questo esercizio è di scrivere un monitor mbuf che realizzi un buffer limitato dove ogni elemento
+venga inserito con una molteplicità. In particolare mbuf deve fornire le seguenti procedure entry:
+void add(type data, int n);
+che inserisce il dato data con molteplicità n.
+type get(void);
+che restituisce il primo dato disponibile.
+Il monitor deve soddisfare i seguenti vincoli:
+• il buffer deve contenere al più MAXELEM elementi (ogni operazione add aggiunge un elemento
+indipendentemente dalla molteplicità n)
+• i dati vengono consegnati in ordine FIFO
+• un dato inserito con molteplicità n deve essere ricevuto da n processi: il monitor deve attendere che n processi
+chiamino (o abbiano chiamato) la get e a quel punto restituisce il dato a tutti e toglie l'elemento dal buffer. 
+
+Svolgimento:
+
+monitor mbuf{
+    condition ok2read;
+    condition ok2write;
+    condition stopCondition;
+    queue q
+    elem = new <type, int>
+
+    entry void add(type data, int n){
+        if(q.length == MAXELEM) ok2write.wait();
+        q.enqueue({data:data,n:n})
+        ok2read.signal();
+    }
+    entry type get(){
+        if (q.length==0) ok2read.wait();
+        if(q.head().n == 1){
+            elem = q.dequeue()
+        }else {
+            q.head().n --;
+            q.head().cond.wait();
+        }
+        stopCondition.signal();
+        ok2write.signal();
+        return elem.data;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2:
+
+process bohm[i, i=0,1] {
+ for (;;) {
+ m.pre(i);
+ print(i);
+ m.post(i);
+ }
+}
+monitor m:
+ condition ok[2];
+ state = 0;
+
+ procedure entry pre(int n) {
+ if (state != n)
+ ok[n].wait();
+ }
+
+ procedure entry post(int n) {
+ state = 1 - state;
+ ok[state].signal()
+ }
+}
+
+
+--------------------------------------------------------------------------------------------------------destra
+
+semaphore ok[2]
+ok[0] = 1;
+ok[1] = 0;
+
+process bohs[i, i=0,1] {
+ for (;;) {
+ pre(i);
+ print(i);
+ post(i);
+ }
+}
+void pre(int n) {
+    ok[n].P();
+}
+void post(int n) {
+    ok[1-n].V();
+}
+
+----------------------------------------------------------------------------------------------------------- 
+
+Scopo di questo esercizio è di studiare il comportamento del programma composto dai processi bohm e dal monitor
+m nella colonna di sinistra e di completare il programma sulla destra in modo che abbia lo stesso comportamento ma
+usi i semafori al posto del monitor e che sia minimale in termini di numero di istruzioni e di variabili utilizzate.
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Sia dato in programma che elabori per x millisecondi, compia una operazione di I/O su uno specifico
+device per y millisecondi quindi faccia una elaborazione finale per x millisecondi e termini.
+Si eseguano tre istanze dello stesso programma su un sistema monoprocessore. I tre processi iniziano l'esecuzione al
+tempo zero e accedono allo stesso device in modo mutualmente esclusivo: le richieste di I/O vengono gestite in
+modalità FIFO.
+Si confronti ora il comportamento di uno scheduler del processore round-robin con valore di time slice m e quello di
+uno scheduler non preemptive a priorità statica (i tre processi hanno priorità diversa).
+A quali condizioni e per quali valori di x, y e m i due scheduler si comportano nello stesso modo?
+
+Svolgimento:
+
+timeline: 
+x millis di elaborazione
+                        operazione I/O da y millis
+                                                  elaborazione finale x millis
+
+consideriamo 3 istanze differenti di questa timeline con mutex sul dispositivo di I/O con politica FIFO.
+Chiameremo i tre punti dell'esecuzione A, B, C.
+
+- scheduler round-robin (time slice di m millis)
+
+rappresentazione con:
+m = 2/3 x
+y = m
+
+
+CPU:            |  P1A  |  P2A  |  P3A  |P1A|P2A|P3A|           |  P1C  |  P2C  |  P3C  |P1C|P2C|P3C|
+I/O:                                                | 1 | 2 | 3 |                       
+
+
+- scheduler non preemptive a priorità statica (i tre processi hanno priorità diversa)
+supponiamo priorità tali che P1 > P2 > P3
+
+CPU:  |  P1A  |  P2A  |  P3A  |                 |  P3A  |  P3B  |  P3C  |
+I/O:                          | P1B | P2B | P3B |
+
+
+-per quali condizioni e valori di x,y,m i due scheduler si comportano allo stesso modo?
+
+per comportarsi allo stesso modo servirebbero le seguenti caratteristiche:
+-priorità 1 > 2 > 3 nello scheduler non preemptive
+- m >= x
+- y <= m
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+rispondere alle seguenti domande:
+a) perché l'invenzione degli interrupt ha reso i sistemi operativi più efficienti?
+
+L'invenzione degli interrupt ha reso i sitemi operativi più efficienti in quanto danno la possibilità di ricevere una notifica quando un determinato evento accade, 
+mentre prima della loro invenzione era necessario interpellare continuamente le periferiche per verificare la presenza di cambiamenti
+(esempio: la teccnica di aquisizione dati detta polling)
+
+
+b) ha senso utilizzare RAID 5 con due dischi?
+
+(Ricontrollare) Raid 5 può essere implementato solo con un numero di dischi >= 3
+
+c) in quali casi entra in funzione il paginatore in un sistema di memoria virtuale e quando viene richiamato l'algoritmo
+di rimpiazzamento?
+
+il pager entra in funzione nel momento in cui la pagina richiesta da un processo non si trova in memoria principale.
+Quando un processo tenta di accedere ad un pagina non in memoria il processore genera un trap (page fault)(o diventa un caso particolare del TLB refill).
+il pager allora si occupa di caricare la pagina mancante in memoria (swap-in), e di aggiornare di conseguenza la tabella delle pagine.
+Nel caso in cui sia necessario effettuare uno swap-in, ma tutte le pagine della memoria sono piene, entra in azione l'algoritmo di rimpiazzamento, che si
+occupa di decidere quale pagina è meglio sostituire con quella nuova.
+
+
+d) quali sono i vantaggi e quali gli svantaggi dell'utilizzo di librerie dinamiche?
+
+Nel linking dinamico le librerie vengono implementate come codice reentrant: esiste una sola istanza della libreria in memoria e tutti i programmi eseguono il codice di 
+questa istanza.
+Vantaggi: risparmio di memoria, consente l'aggiornamento automatico delle versioni delle librerie e le librerie aggiornate sono caricate alla successiva 
+attivazione dei programmi. (anche codice più compatto)
+Svantaggi: può causare problemi di "versioning", (occorre aggiornare le versioni solo se non sono incompatibili, cambiamento numero di revisione e non di release)

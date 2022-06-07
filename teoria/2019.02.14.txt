@@ -1,0 +1,142 @@
+Esercizio c.1: 
+
+Definiamo col nome di semaforo monobinario un semaforo che può assumere solamente i valori zero e
+uno. Come un semaforo binario ordinario una operazione monoP quando il semaforo ha valore zero deve bloccare il
+processo chiamante, altrimenti porta il valore del semaforo da 1 a 0. Quando il valore del semaforo è zero, una
+operazione monoV sblocca il primo processo bloccato, se ve ne sono, altrimenti porta il valore da 0 a 1. Una operazione
+monoV su un semaforo monobinario che ha valore 1 non produce alcun effetto. Scrivere il monitor monobinarysem
+che implementi i metodi monoP e monoV.
+
+Svolgimento:
+
+Siccome non è richiesto di implementare una entry per settare il valore iniziale del semaforo, decido di inizializzarlo manualmente a 1
+
+monitor monobinarysem{
+
+    condition ok2p
+    int value = 1;
+    int blocked = 0;
+
+    entry void monoP(){
+        if (value == 0) {
+            blocked++;
+            ok2p.wait();
+            blocked--;
+        }
+        else value--;
+    }
+
+    entry void monoV(){
+        if( value == 0 ){
+            if(blocked > 0){
+                ok2p.signal();
+            }else value++;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+Sia dato un servizio di message passing asincrono. Senza fare uso di processi server implementare un
+servizio di message passing parzialmente sincrono (nel quale l'operazione pssend blocchi il chiamante fino ad
+avvenuta ricezione del messaggio e la operazione psreceive non sia bloccante, quindi deve ritornare immediatamente
+"None" se non è stato ricevuto alcun messaggio corrispondente alle richieste).
+
+pssend(msg,dest){
+    asend((msg,getPid()),dest);
+    string ack = arecv(dest);
+}
+
+psreceive(sender){
+    object = new <msg, realSender>
+    object = arecv(sender)
+    if (object != NULL){
+        string ack = "ack message";
+        asend(ack, object.realSender);
+        return object.msg;
+    } else return none;
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+In un sistema monoprocessore mostrare un caso nel quale l'algoritmo di scheduling FIFO e quello Round
+Robin producano la stessa sequenza di esecuzione (per evitare casi banali si richiede che siano presenti almeno 3
+processi e ognuno faccia almeno due operazioni di I/O).
+
+Svolgimento:
+
+processi: p1,p2,p3
+tempo di esecuzione in ms: 5,7,9
+tutti e tre i processi sono fatti in questo modo: elaborazione, I/O, elaborazione, I/O, elaborazione
+p1: 1ms, 1ms, 1ms, 1ms, 1ms
+p2: 2ms, 1ms, 1ms, 2ms, 1ms
+p3: 2ms, 1ms, 2ms, 1ms, 2ms
+ordine di arrivo: p1, p2, p3
+
+caso fifo:
+
+    tempo:    0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19        
+    I/O:          | P1|   | P2|   | P3| P1|   |   P2  | P3|    
+    cpu:      | p1|  P2   |   P3  | P1|  P2   |   P3  | P1|  P2|   P3  |
+
+caso rr con time slice di 2ms:
+
+    tempo:      0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19      
+    I/O:            | P1|   | P2|   | P3| P1|   |   P2  | P3|    
+    cpu:        | p1|  P2   |  P3   | P1|  P2   |   P3  | P1|  P2|   P3  |  
+
+In generale il timeslice in RR dovrebbe essere >= al massimo tempo di esecuzione dei processi attivi, o si avrebbe una 
+differenza nel flusso esecutivo
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: 
+
+Rispondere alle domande seguenti:
+
+a) il valore della "finestra" del working set dipende dall'algoritmo di rimpiazzamento utilizzato? Perché ?
+
+    No, il calcolo del working set dipende strettamente dai processi che sono attivi in un determinato momento e di conseguenza dal numero di
+    frame di cui questi hanno bisogno per procedere con l'esecuzione.
+    In particolare Ad ogni processo Pi viene assegnato un numero di frame sufficiente a mantenere in memoria il suo working set basandosi sul 
+    numero di pagine richieste nell'intervalo di tempo precedente (bisogna fare attenzione a non scegliere un numero troppo piccolo o si avrebbe trashing,
+    ne un numero troppo grande o si avrebbero falsi positivi di trashing)
+
+b) la metodologia RAID protegge dall'esecuzione di programmi errati che rovinano i dati? Perché?
+
+    C'è una protezione parziale data dal fatto che i dati vengono salvati su strip residenti in dischi differenti, o addirittura (raid1) 
+    possono essere presenti dischi di mirroring che hanno proprio lo scopo di fare un backup dei dati.  
+    Ovviamente però se i dati vengono modificati "volontariamente dal prograamma" anche i dati errati verrebbero salvati poichè è imossibile 
+    riconscerli, mentre se l'errore nei dati è dato da problemi durante lettura/scrittura interviene il meccanismo della parità.
+
+c) Qual è il numero di link indicati nell'i-node di una directory di un File System UNIX (bffs, ext2, ...)? Perché?
+
+    il link count di una directory in un file system UNIX è uguale a 2 + il numero di sotto directory.
+    La base di 2 è data da due caratteristiche fondamentali:
+    - il nome della directory rappresenta un link a se stessa   
+    - ogni directory ha un ulteriore link verso se stessa denominato con "."
+    In aggiunta a questi bisogna considerare che quando si crea una sottodirectory viene generato un ulteriore link alla
+    directory madre dato da "..". 
+    Nota importante: nella domanda viene chiesto del link count relatio ad una directory, non a un file.
+    In UNIX non è permesso creare link esterni ad una directory, poichè rischierebbe di generare cicli etc.
+    Quindi il link count è incrementabile solo aggiungendo sotto directories (a differenza di ciò che avviene con i files). 
+
+d) I sorgenti del sistema operativo Linux possono essere scaricati e il kernel può essere ricompilato. In quali casi
+pensate sia necessario compilare un kernel specifico?
+
+alcuni utenti preferiscono ricompilare il kernel per includere unicamente ciò di cui necessitano. 
+Ci sono due ragioni per questa scelta. 
+- Primo, questo può ottimizzare il consumo di memoria perché il codice del kernel anche se non viene mai utilizzato occupa memoria senza motivo
+(e non viene mai posto nello spazio di swap, dato che utilizza la vera RAM), cosa che può diminuire le prestazioni complessive del sistema. 
+- Inoltre un kernel compilato localmente può anche limitare i rischi di sicurezza poiché solo una frazione del codice del kernel 
+è compilato ed eseguito.
+
+La scelta di un kernel specifico può essere legata al voler installare solo un determinato insieme di driver e funzionalità.
+
+Nota: Ricompilare il kernel è inoltre necessario se si vuole utilizzare certe funzionalità che sono disponibili solo come patch
+ (e non sono incluse nella versione standard del kernel).

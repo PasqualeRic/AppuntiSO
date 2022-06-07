@@ -1,0 +1,45 @@
+Esercizio g.2:
+
+Perché un algoritmo di rimpiazzamento a stack non soffre dell’anomalia di Belady?
+
+    Per definizione un algoritmo A è detto a stack se St(A,s,m) è sottoinsieme di St(A,s,m+1)
+    dove m è il numero di frame in memoria e s è la stringa dei riferimenti degli accessi in memoria fatti.
+    Da questa definizione capiamo che è impossibile il verificarsi dell'anomalia di Belady, all'aumentare dei frame al massimo è possibile
+    che il'insieme di pagine in memoria sia lo stesso, ma non una quantità superiore (che è il caso dell'anomalia di Belady).
+
+Perché si può usare un meccanismo di crittografia simmetrica nella gestione delle capability di accesso alle risorse?
+
+    Perchè la capability fornisce una chiave di accesso a disposizione del processo per accedere al servizio specifico cui è associata.
+    Quindi è sufficiente che le capability vengano assegnate ai processi già cifrate e nel momento in cui vanno consegnate possono essere 
+    decifrate dalla stessa chiave e confrontate con quella conservata e protetta dal kernel
+
+Quali operazioni svolge il processore per la gestione di un interrupt e quali invece sono a carico del kernel del sistema operativo?
+
+    Nel caso di un interrupt hardware: Un segnale ‘interrupt request’ viene spedito al processore, al che il processore sospende 
+    le operazioni del processo corrente e salta ad un particolare indirizzo di memoria contenente un'apposita routine per la gestione.
+    Caso software: L’interrupt handler (kernel) gestisce l’interrupt nel modo opportuno e ritorna il controllo al processo interrotto 
+    (o un altro processo es.scheduling). A questo punto il processore riprende l’esecuzione del processo interrotto come se nulla fosse successo.
+
+    In particolare:
+    -Parte CPU:
+        Un segnale di interrupt viene spedito alla cpu
+        La cpu finisce l’esecuzione dell’operazione corrente
+        La cpu verifica la presenza dell’interrupt e in caso affermativo spedisce un segnale al device chel’ha generato
+        Preparazione del trasferimento del controllo dal programma all’interrupt handler
+        Selezione dell’interrupt handler appropriato (tramite interrupt vector)
+    -Parte Kernel:
+        Caricamento nel program counter con l’indirizzo iniziale dell’interrupt handler assegnato
+        Salvataggio dello stato del processore (informazioni critiche)
+        Gestione dell’interrupt (eventuali ulteriori scambi di informazioni)
+        Ripristino dello stato del processore 
+        Ritorno del controllo al processo in esecuzione (o a un altro se necessario)
+
+Perche’ il mascheramento degli interrupt non si può utilizzare per creare sezioni critiche in sistemi multicore o multiprocessore?
+
+    Perchè la semplice disabilitazione degli interrupt non sarebbe sufficiente in caso di parallelismo reale a prevenire l'accesso 
+    a memoria condivisa in concorrenza. (Si rendono necessari altri meccanismi, come lo spinlock).
+
+Per quali tipi di processo l’algoritmo di schedulazione round-robin è efficiente e per quali no?
+
+    L'algoritmo di schedulazione round robin è inadatto a processi multimediali, mentre è efficiente nel caso di grande presenza di processi
+    con tempi di CPU burst elevati poichè si va ad evitare il convoy effect. 

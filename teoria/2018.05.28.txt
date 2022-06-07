@@ -1,0 +1,190 @@
+Esercizio c.1: 
+
+La struttura di sincronizzazione riempisvuota ha le seguenti caratteristiche:
+-) entrano MAX processi, e fino a che non è piena nessun processo può uscire
+-) i processi devono uscire in ordine inverso rispetto all'ordine di arrivo.
+Quando un processo vuole usare la struttura riempisvuota chiama la seguente funzione:
+ def riempisvuotasynch():
+ riempisvuota.entra(getpid())
+ riempisvuola.esci(getpid())
+Scrivere il monitor riempisvuota.
+
+Svolgimento:
+
+monitor riempisvuota{
+
+    struct pidcond{
+        pid_t pid
+        condition cond;
+    }
+
+    int procNum = 0;
+    stack s of pidcond;
+    condition ok2enter;
+    condition ok2exit;
+    bool exit = false;
+
+    entry void entra(pid){
+        if(procNum == MAX || exit) ok2enter.wait();
+        procNum++;
+        cond = new condition();
+        s.push({pid:pid, condition: cond});
+        if(procNum == MAX) {
+            ok2exit.signal();
+            exit=true;
+        }else ok2enter.signal();
+    }
+
+    entry void esci(pid){
+        if(!exit) ok2exit.wait();
+        (p,cond) = s.top();
+        if (pid !=  p) cond.wait();
+        (p,cond) = s.pop();
+        s.top().cond.signal();
+        procNum--;
+        if(procNum == 0) {
+            ok2enter.signal(); 
+            exit=false;
+        }
+        else ok2exit.signal();
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio c.2: 
+
+In un sistema ci sono 26 processi server proc['a'], proc['b'] .... proc['z'] che usano message passing asincrono. Ogni
+processo è l'unico che può stampare la propria lettera ed esegue il seguente codice:
+
+ proc[x]: x='a',...,'z'
+     while True:
+        (c, string) = arecv(*)
+        print(x)
+        if (len(string) > 1)
+            asend(proc[string[0]], (x, string[1:]))
+
+e i clienti che vogliono stampare una stringa (non vuota) usano la funzione:
+ 
+ def procstampa(s):
+    asend(proc[s[0]], (None, s))
+
+Se un cliente alla volta chiama la procstampa il sistema produce il risultato voluto ma se malauguratamente un cliente chiama la
+procstampa mentre è in corso un'altra stampa l'output delle due operazioni può mischiarsi (se il primo cliente ha chiesto di stampare
+"ciao" e il secondo "mondo" l'output potrebbe essere "cmionadoo").
+Senza aggiungere ulteriori processi e senza modificare il codice eseguito dai clienti correggere il codice dei server in modo che il
+programma concorrente funzioni correttamente in ogni caso (nell'esempio precedente venga stampato prima "ciao" e poi "mondo", o
+viceversa, ma ogni stringa venga interamente stampata prima che inizi la stampa della successiva).
+
+Svolgimento:
+
+    proc[x]: x='a',...,'z'
+    toPrint = ""
+     while True:
+        (c, string, TAG) = arecv(*)
+        if(TAG != undefined){
+            toPrint += string; 
+            asend(proc[c], (x, "", 1))
+        }
+        if(c == None){
+            toPrint += string; 
+            for(let lettera of alfabeto){
+                asend(proc[lettera],(x, string, 0));
+                arecv(lettera);
+            }
+        }
+        while(x != toPrint[0]) {
+            toPrint = toPrint[1:];
+        }
+        print(x)
+            if (len(toPrint) > 1)
+                toPrint = toPrint[1:];
+                asend(proc[toPrint[0]], (x, ""))
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Ci siano in un sistema due processi P1 e P2 identici che iniziano contemporaneamente. Entrambi i processi
+computano per 4 ms, fanno I/O per 2 ms e poi elaborano nuovamente per 4 ms. L'I/O dei due processi avviene sulla stessa unita' con
+accesso FIFO. Il sistema usa uno scheduler di tipo round robin. Calcolare lo schedule per ogni scelta della lunghezza del quanto di
+tempo e quale sia la scelta (o siano le scelte) migliori. E quale è il limite massimo di durata dello schedule (considerando il time slice
+come numero reale positivo)?
+
+Svolgimento:
+
+    TS = 1:
+        
+        cpu: P1  P2  P1  P2  P1  P2  P1  P2  Id  P1  P1  P2  P1  P2  P1  P2  P2   
+        I/O:                             P1  P1  P2  P2
+
+    Tempo di schedule: 17 ms, tempo in cui il processore è in stato di Idle: 1ms
+
+    TS = 2:
+        
+        cpu: P1  P1  P2  P2  P1  P1  P2  P2  P1  P1  P2  P1  P2  P1  P2  P2   
+        I/O:                         P1  P1  P2  P2
+
+    Tempo di schedule: 16 ms, tempo in cui il processore è in stato di Idle: 0ms
+
+    TS = 3:
+        
+        cpu: P1  P1  P1  P2  P2  P2  P1  P2  Id  P1  P1  P2  P2  P2  P1  P1  P2       
+        I/O:                             P1  P1  P2  P2
+
+    Tempo di schedule: 17 ms, tempo in cui il processore è in stato di Idle: 1ms
+
+    TS = 4:
+        
+        cpu: P1  P1  P1  P1  P2  P2  P1  P1  P1  P1  P2  P2  Id  Id  P2  P2  P2  P2       
+        I/O:                 P1  P1                          P2  P2
+
+    Tempo di schedule: 18 ms, tempo in cui il processore è in stato di Idle: 2ms
+
+    Per TS = 4+ lo scheduler si comporta esattamente come con TS = 4
+
+    
+    Tempo di durata minimo dello schedule: 16ms con TS = 2
+    Minimo tempo in stato di Idle: 0ms con TS = 2
+
+    Tempo di durata massimo dello schedule: 18ms con TS = 4
+    Massimo tempo in stato di Idle: 2ms con TS = 4
+
+    Scelta migliore: TS = 2
+    Limiti di durata dello schedule: minuìimo: 16ms, massimo: 18ms.
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2:
+
+Rispondere alle domande seguenti:
+
+a) A cosa serve e quando viene eseguito un algoritmo di rimpiazzamento?
+
+    L'algoritmo di rimpiazzamento serve a determinare quali pagine rimuovere dalla RAM per far posto a nuove pagine in ingresso. Questo
+    Algoritmo viene eseguito ogni qualvolta un processo in esecuzione richiede una pagina che non si trova momentaneamente in RAM (ovvero
+    quando avviene un page fault) e la memoria è già piena.
+
+
+b) Come si calcola la lunghezza massima di un file che si può memorizzare su un file system di tipo ext2?
+
+    La lunghezza massima di tale file viene calcolato andando a sommare la memoria indirizzabile dai puntatori diretti, dai puntatori di primo, secondo e 
+    terzo livello
+
+c) A cosa serve il meccanismo del sale (salt) nella memorizzazione delle password criptate? E se il salt funziona, perché le password
+criptate in Linux vengono memorizzate nel file "/etc/shadow" e non in "/etc/passwd"?
+
+    Il meccanismo del sale, nel salvataggio delle password serve ad introdurre nella password criptata informazioni (caratteri) "inutili",
+    per far si che sia più difficile capire il criterio con cui queste password sono state criptate, infatti con una notevole quantità di 
+    dati a disposizione, un algoritmo potrebbe essere in grado di replicare la cifratura rendendo la decifratura molto più semplice.
+    Inoltre utilizzando la tecnica del bruteforce su password che contengono sale è quasi impossibile risalire alla password in chiaro.
+    Le password vengono salvate in file separato in quanto il file passwd contiene informazioni utili ad altri contesti
+    si è deciso quindi di inserire tale informazione sensibile in un file separato
+
+d) Cosa occorre fare per evitare il deadlock quando lo stato calcolato dall'algoritmo del banchiere risulta unsafe?
+
+    Se uno stato risulta unsafe possiamo eliminare un processo per ritornare ad uno stato safe, potremmo anche non fare nulla 
+    e sperare che un processo rilasci le risorse in maniera spontanea.

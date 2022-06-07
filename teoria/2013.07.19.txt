@@ -1,0 +1,162 @@
+Esercizio c.1: 
+
+scrivere un monitor mvie che gestisca M buffer limitati. Ogni buffer ha l'ampiezza di MELEM elementi. 
+
+    I produttori chiamano la procedure entry:
+    put(generic *object)
+    
+    mentre i consumatori chiamano la procedure entry
+    generic *get(int n)
+
+I produttori conferiscono un vettore di M elementi, uno per ogni buffer al buffer.
+Per esempio put(v), (dove v e' un vettore di M elementi) inserisce ogni elemento del vettore nel buffer corrispondente. I consumatori ricevono un
+oggetto dal buffer indicato come parametro oggetti ma attendono sempre che ci sia almeno un elemento in ogni buffer.
+
+Svolgimento:
+
+monitor mvie{
+
+    int M;
+    int MELEM;
+    int higher;
+    condition ok2write, ok2read;
+    bufs = new (gerneric *queue) array(M);
+
+    entry void init(m, melem){
+        M = m;
+        MELEM = melem;
+        higher = 0;
+    }
+
+    entry void put(generic *object){
+        if(higher == MELEM) ok2write.wait();
+        for(int i=0; i<M; i++){
+            bufs[i].enqueue(object[i]);
+        }
+        higher = getMaxLength(bufs);
+        ok2read.signal();
+    }
+
+    entry generic *get(int n){
+        if( theresAnEmptyBuf(bufs) ) ok2read.wait();
+        generic elem = bufs[n].dequeue();
+        higher = getMaxLength(bufs);
+        if(!theresAnEmptyBuf(bufs)) ok2read.signal();
+        else if(higher < MELEM) ok2write.signal();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Esercizio c.2:
+
+shared val = 0;
+shared Semaphore sp = new Semaphore(1);
+shared Semaphore sq = new Semaphore(1);
+shared Semaphore mutex = new Semaphore(1);
+
+process P {
+    int kp = 3;
+    while (kp > 0) {
+        sp.P();
+        mutex.P();
+        val = val+1;
+        sq.V();
+        mutex.V();
+        kp--;
+    }
+}
+process Q {
+    int kq = 2;
+    while (kq > 0) {
+        sq.P();
+        mutex.P();
+        val = val*2;
+        sp.V();
+        mutex.V();
+        kq--;
+    }
+}
+
+a) Al termine di questo programma, quali sono i valori possibili della variabile condivisa val?
+b) E' possibile che i processi P o Q restino bloccati indefinitamente?
+
+Svolgimento:
+
+a)
+
+P: sp(0)    mutex(0)    val=1   sq(1)   mutex(0)    kp = 2
+Q: sq(0)    mutex(wait)                      val=2  sp()
+
+ad ogni ciclo il risultato cambia a seconda di chi tra P e Q riesce a prendere la mutex per primo.
+ciclo 1:
+
+    P prende la mutex per primo:    val = 2
+        P prende la mutex per primo:    val = 6
+            P è da solo:    val = 7
+        Q prende la mutex per primo:    val = 5
+            P è da solo:    val = 6
+
+    Q prende la mutex per primo:    val = 1
+        P prende la mutex per primo:    val = 4
+            P è da solo:    val = 5
+        Q prende la mutex per primo:    val = 3
+            P è da solo:    val = 4
+
+Possibili valori: 3,4,5,6
+
+b)
+
+C'è un pasaggio del testimone appena prima di una mutex.P(), quindi il processo appena risvegliato (che è in mutua esclusione) potrebbe 
+bloccarsi sul semaforo di mutex bloccando tutto (a meno che la sp.V non metta Q nella lista dei processi pronti, in quel caso dovrebbe 
+continuare e rilasciare la mutex lasciando entrare P).
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.1: 
+
+Siano dati i processi P1, P2 e P3 in ordine descrescente di priorita' (P1 ha massima priorita' e P3 minima).
+
+    P1: CPU 2ms, I/O 1ms, CPU 2ms, I/O 2ms, CPU 2ms
+    P2: CPU 3ms, I/O 2ms, CPU 3ms, I/O 2ms, CPU 3ms
+    P3: CPU 1ms, I/O 1ms, CPU 1ms, I/O 1ms, CPU 1ms
+
+I tre processi usano la stessa unita' per l'I/O (le richieste di I/O vengono gestite in ordine FIFO)
+Si calcoli il diagramma di Gannt (descrivendo il procedimento) per uno scheduler round robin con time slice 2ms.
+
+Svolgimento:
+La priorità non dovrebbe dire nulla con un algoritmo RR.    
+                                                    
+    CPU: P1  P1  P2  P3  P3  P1  P2  P2  P3  P1  P2  P3  P2  P1  P1  P2         P2  P2  P2
+    I/O:         P1          P3          P2  P2  P3  P1  P1              P2  P2  
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Esercizio g.2: Le seguenti affermazioni sono vere o false? (Motivare dettagliatamente le risposte).
+
+a) I processi vengono eseguiti piu' velocemente nei sistemi con memoria virtuale.
+
+    è un affermazione errata, è vero che la memoria virtuale viene utilizzata per espandere la ram (e quindi permettere
+    a più processi o processi più onerosi di allocarvi spazio), ma questo ha bene poco a che fare con la velocità di esecuzione.
+    Anzi, ci sono casi in cui il tempo speso in page fault risulta maggiore di quello effettivo di esecuione dei processi. 
+
+b) In un File System di tipo FAT non vi e' limite massimo alla dimensione di un singolo file.
+
+    falsa, nei filesystem di tipo FAT (32) è presente una limitazione di circa 4gb alla dimensione che può avere un singolo file.
+    La limitazione è data dal fatto che con i 32 bit a disposizione per l'indirizzamento non è ossibile allocare spazi di dimensione 
+    superiore a 4gb circa.
+    
+
+c) In un File System di tipo ext2 non vi e' limite massimo alla dimensione di un singolo file.
+
+    Nell'ultima versione di ext 2 la massima dimensione per un file è di 2TiB
+
+d) I file system con allocazione contigua non vengono piu' utilizzati.
+
+    Falso, restano comunque utili a seconda dell'utilizzo che bisogna farne.
+    Inltre sono nati file system ibridi che utilizzano l'allocazione contigua quando questa risulta più efficiente. 
+
+e) L'algoritmo di rimpiazzamento LRU non puo' essere utilizzato insieme alla tecnica del Working Set. 
+
+    falso, la tecnica del working set non richiede uno specifico algoritmo di rimpiazzamento, in quanto il working set 
+    serve solo a determinare quanti e quali processi possono essere presenti in ram contemporaneamente evitando il 
+    manifestarsi di trashing.
